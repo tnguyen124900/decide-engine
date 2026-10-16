@@ -1,0 +1,280 @@
+{
+  "root_id": "PSM",
+  "parameters": [],
+  "nodes": [
+    {
+      "id": "PSM",
+      "type": "decision",
+      "branches": [
+        {
+          "label": "Pembrolizumab plus Chemo",
+          "child_id": "psm_1",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "label": "Chemo only",
+          "child_id": "psm_0"
+        }
+      ],
+      "label": "PSM"
+    },
+    {
+      "id": "psm_1",
+      "type": "psm",
+      "branches": [
+        {
+          "label": "Pre-progression",
+          "child_id": "PF",
+          "role": "pre_progression",
+          "cost_increment": "if(_cycle<35, cPem/3 - ((cPem/3 - cPem*4/35)/34)*_cycle, 0) + cPeme + if(_cycle<4, cCarbo, 0) + if(_cycle<35, cPemAd, 0) + cChemoAd + cLab + if(_cycle==0, 2*cPemAE, 0)",
+          "effect_increment": "uPF"
+        },
+        {
+          "label": "Post-progression",
+          "child_id": "PD",
+          "role": "post_progression",
+          "cost_increment": "cPD_Pem",
+          "effect_increment": "uPD"
+        },
+        {
+          "label": "Dead",
+          "child_id": "Dead",
+          "role": "dead",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ],
+      "pfs_curve": {
+        "distribution": "log_logistic",
+        "params": {
+          "shape": 1.5328,
+          "scale": 9.3781
+        },
+        "time_unit": "month"
+      },
+      "os_curve": {
+        "distribution": "log_logistic",
+        "params": {
+          "shape": 1.3517,
+          "scale": 22.16
+        },
+        "time_unit": "month"
+      },
+      "cycles": 174,
+      "half_cycle_correction": true,
+      "cycles_per_year": 17.39
+    },
+    {
+      "id": "psm_0",
+      "type": "psm",
+      "branches": [
+        {
+          "label": "Pre-progression",
+          "child_id": "PF_2",
+          "role": "pre_progression",
+          "cost_increment": "if(_cycle<4, cCarbo, 0)+ cPeme + cChemoAd + cLab + if(_cycle==0, 2*cPemAE, 0)",
+          "effect_increment": "uPF"
+        },
+        {
+          "label": "Post-progression",
+          "child_id": "PD_2",
+          "role": "post_progression",
+          "cost_increment": "cPD_Plb",
+          "effect_increment": "uPD"
+        },
+        {
+          "label": "Dead",
+          "child_id": "Dead_2",
+          "role": "dead",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ],
+      "pfs_curve": {
+        "distribution": "generalized_gamma",
+        "params": {
+          "scale": 0.3253,
+          "a": 1.738,
+          "c": 0.8756,
+          "mu": 1.738,
+          "sigma": 0.8756,
+          "Q": 0.3253
+        },
+        "time_unit": "month"
+      },
+      "os_curve": {
+        "distribution": "log_logistic",
+        "params": {
+          "shape": 1.4229,
+          "scale": 11.7546
+        },
+        "time_unit": "month"
+      },
+      "cycles": 174,
+      "half_cycle_correction": true,
+      "label": "psm_0",
+      "cycles_per_year": 17.39
+    },
+    {
+      "id": "PF",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "branches": [],
+      "label": "PF"
+    },
+    {
+      "id": "PD",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "branches": [],
+      "label": "PD"
+    },
+    {
+      "id": "Dead",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "branches": [],
+      "label": "Dead"
+    },
+    {
+      "id": "PF_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "branches": [],
+      "label": "PF"
+    },
+    {
+      "id": "PD_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "branches": [],
+      "label": "PD"
+    },
+    {
+      "id": "Dead_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "branches": [],
+      "label": "Dead"
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "cost",
+      "type": "cost",
+      "label": "Cost",
+      "symbol": "$",
+      "decimals": 2
+    },
+    {
+      "id": "effect",
+      "type": "effect",
+      "label": "Effect",
+      "symbol": "E",
+      "decimals": 4
+    }
+  ],
+  "cost_symbol": "$",
+  "cost_decimals": 2,
+  "effect_symbol": "E",
+  "effect_decimals": 4,
+  "discount_cost_value": 0.05,
+  "discount_effect_value": 0.05,
+  "analysis": {
+    "type": "CEA",
+    "effect_objective": "maximize",
+    "baseline_strategy_id": null,
+    "willingness_to_pay": 100000.0,
+    "cost_outcome_id": "cost",
+    "effect_outcome_id": "effect"
+  },
+  "distributions": [],
+  "variables": [
+    {
+      "name": "cPem",
+      "definition": "2768.50*2",
+      "_id": "74ec53edd2ed4b0786ea4debf2e66176"
+    },
+    {
+      "name": "cPeme",
+      "definition": "330.96*8.7",
+      "_id": "89b1aa37bb584a35abe6a75cd91e1395"
+    },
+    {
+      "name": "cCarbo",
+      "definition": "0.17*511.87",
+      "_id": "38fd8094a9d3431b989e8afbd4fdce08"
+    },
+    {
+      "name": "cNivo",
+      "definition": "1430.76*1.8558",
+      "_id": "bbb5ff0b089448059e19e66850c2a8a5"
+    },
+    {
+      "name": "cDoce",
+      "definition": "200.86*104.4/200",
+      "_id": "6b5f7386c87b464faf8a025ec017bb68"
+    },
+    {
+      "name": "cPemAd",
+      "definition": "8.69",
+      "high": 10.86,
+      "low": 6.52,
+      "_id": "6f025538c43f4584a4982bbf41ecc247"
+    },
+    {
+      "name": "cChemoAd",
+      "definition": "48.71",
+      "high": 60.89,
+      "low": 36.53,
+      "_id": "03905eb6363d42a084c489c3235668d2"
+    },
+    {
+      "name": "cLab",
+      "definition": "62.02",
+      "high": 77.53,
+      "low": 46.52,
+      "_id": "b1b7a6767f344ce1a358dbc859778e82"
+    },
+    {
+      "name": "cPemAE",
+      "definition": "277.74",
+      "_id": "07467468c0f449f8a163c53a30e194bf"
+    },
+    {
+      "name": "cPlbAE",
+      "definition": "228.48",
+      "_id": "dd994bf7817e4eb9aac05d09a42f4be0"
+    },
+    {
+      "name": "uPF",
+      "definition": "0.804*3/52",
+      "_id": "9f31db71dc3b48e5a8b91cc03bde827a"
+    },
+    {
+      "name": "uPD",
+      "definition": "0.321*3/52",
+      "_id": "9b5fb82576a44eaaae7ea4499c9f46f6"
+    },
+    {
+      "name": "cPD_Pem",
+      "definition": "0.134*cNivo + 0.312*(cDoce+cChemoAd)",
+      "_id": "675533ef47c74cf0a458b7712c0a12cc"
+    },
+    {
+      "name": "cPD_Plb",
+      "definition": "0.131*cNivo + 0.053*(cDoce+cChemoAd) + 0.408*(0.5*cPem+cPemAd)",
+      "_id": "0e0ef13e46e04f82a97c887797f09347"
+    }
+  ],
+  "distribution": {},
+  "tables": [],
+  "note": "Cross-checked with \"Cost-Effectiveness Analysis of Pembrolizumab Plus Pemetrexed and Platinum Versus Chemotherapy Alone as First-Line Treatment in Metastatic Non-Squamous Non-Small Cell Lung Cancer: A Reconstruction of Partitioned Survival Model Based on Time Dependent Pricing Mechanism of Patient Assistance Program\" - Cai Y, Hui W, Zhu M, Zhang M, Gao Z, Wu H. Front Oncol. 2021;11:768035. https://doi.org/10.3389/fonc.2021.768035."
+}

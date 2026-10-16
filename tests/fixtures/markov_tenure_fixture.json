@@ -1,0 +1,1333 @@
+{
+  "id": "markov_model",
+  "name": "Markov model",
+  "cycles": 600,
+  "half_cycle_correction": true,
+  "cycles_per_year": 13.0,
+  "discount_cost_value": 0.03,
+  "discount_cost_unit": "per year",
+  "discount_effect_value": 0.03,
+  "discount_effect_unit": "per year",
+  "parameters": [
+    {
+      "name": "HR_PFS",
+      "base": 0.5
+    },
+    {
+      "name": "HR_PMW",
+      "base": 0.49
+    },
+    {
+      "name": "HR_OS",
+      "base": 0.69
+    },
+    {
+      "name": "rRash",
+      "base": 0.121
+    },
+    {
+      "name": "rHyperglycemia",
+      "base": 0.023
+    },
+    {
+      "name": "rDiarrhea",
+      "base": 0.093
+    },
+    {
+      "name": "StartAge",
+      "base": 58.0
+    },
+    {
+      "name": "rPMW",
+      "base": 0.891
+    },
+    {
+      "name": "cCAP",
+      "base": 24146.56
+    },
+    {
+      "name": "cFUL",
+      "base": 2051.32
+    },
+    {
+      "name": "cDA",
+      "base": 34.23
+    },
+    {
+      "name": "cOS",
+      "base": 1006.1
+    },
+    {
+      "name": "cPI3K",
+      "base": 3500.0
+    },
+    {
+      "name": "cEOL",
+      "base": 72560.26
+    },
+    {
+      "name": "cDiarrhea",
+      "base": 9072.78
+    },
+    {
+      "name": "cHyperglycemia",
+      "base": 273.03
+    },
+    {
+      "name": "cRash",
+      "base": 8351.4
+    }
+  ],
+  "strategies": [
+    {
+      "id": "strategy_1",
+      "name": "CAP to all",
+      "states": [
+        {
+          "id": "chance",
+          "name": "PF",
+          "initial_prob": 1.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null,
+          "tenure_applied": true,
+          "tenure_count": 600,
+          "initial_cost": "cPF_cycle1",
+          "recurring_cost": "cPF_regular",
+          "terminal_cost": "cPF_regular",
+          "cost": "cPF_regular",
+          "effect": "uPF"
+        },
+        {
+          "id": "chance_2",
+          "name": "PD",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null,
+          "effect": "uPD",
+          "tenure_applied": true,
+          "tenure_count": 600,
+          "initial_cost": "cPD",
+          "recurring_cost": "cPD",
+          "terminal_cost": "cPD",
+          "cost": "cPD"
+        },
+        {
+          "id": "chance_3",
+          "name": "PF wo CAP",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null,
+          "tenure_applied": false,
+          "cost": "cFUL+cDA+cLAB+cImaging+cOV",
+          "effect": "uPF"
+        },
+        {
+          "id": "chance_4",
+          "name": "Dead",
+          "initial_prob": "#",
+          "is_absorbing": true,
+          "canvas_kind": "terminal",
+          "canvas_parent": null,
+          "cost": 0.0,
+          "effect": 0.0,
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_7",
+          "name": "chance_7",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance"
+        },
+        {
+          "id": "chance_8",
+          "name": "chance_8",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance"
+        },
+        {
+          "id": "chance_9",
+          "name": "chance_9",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_8"
+        },
+        {
+          "id": "chance_10",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_8"
+        },
+        {
+          "id": "chance_11",
+          "name": "PF",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9"
+        },
+        {
+          "id": "chance_12",
+          "name": "PD",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9"
+        },
+        {
+          "id": "chance_13",
+          "name": "chance_13",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_7"
+        },
+        {
+          "id": "chance_14",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_7"
+        },
+        {
+          "id": "chance_15",
+          "name": "chance_15",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_13",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_16",
+          "name": "chance_16",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_13",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_17",
+          "name": "PF",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_15",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_18",
+          "name": "PD",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_15",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_19",
+          "name": "PF wo CAP",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_16",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_20",
+          "name": "PD",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_16",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_7_2",
+          "name": "chance_7_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_13_2",
+          "name": "chance_13_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_7_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_14_2",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_7_2"
+        },
+        {
+          "id": "chance_15_2",
+          "name": "chance_15_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_13_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_16_2",
+          "name": "chance_16",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_13_2"
+        },
+        {
+          "id": "chance_17_2",
+          "name": "PF",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_15_2"
+        },
+        {
+          "id": "chance_18_2",
+          "name": "PD",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_15_2"
+        },
+        {
+          "id": "chance_19_2",
+          "name": "PF wo CAP",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_16_2"
+        },
+        {
+          "id": "chance_20_2",
+          "name": "PD",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_16_2"
+        },
+        {
+          "id": "chance_7_2_2",
+          "name": "chance_7_2_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_13_2_2",
+          "name": "chance_13_2_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_7_2_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_14_2_2",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_7_2_2"
+        },
+        {
+          "id": "chance_15_2_2",
+          "name": "chance_15_2_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_13_2_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_16_2_2",
+          "name": "chance_16_2_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_13_2_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_17_2_2",
+          "name": "PF",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_15_2_2"
+        },
+        {
+          "id": "chance_18_2_2",
+          "name": "PD",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_15_2_2"
+        },
+        {
+          "id": "chance_19_2_2",
+          "name": "PF wo CAP",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_16_2_2"
+        },
+        {
+          "id": "chance_20_2_2",
+          "name": "PD",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_16_2_2"
+        },
+        {
+          "id": "chance_9_2",
+          "name": "chance_9_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_3",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_11_2",
+          "name": "PF wo CAP",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9_2"
+        },
+        {
+          "id": "chance_12_2",
+          "name": "PD",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9_2"
+        },
+        {
+          "id": "chance_5",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_3"
+        },
+        {
+          "id": "chance_9_2_2",
+          "name": "PD",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_2"
+        },
+        {
+          "id": "chance_6",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_2"
+        }
+      ],
+      "transitions": [
+        {
+          "from_state": "chance",
+          "to_state": "chance_7",
+          "probability": "pRash",
+          "label": "Rash",
+          "effect_increment": "duRash",
+          "cost_increment": "cRash"
+        },
+        {
+          "from_state": "chance",
+          "to_state": "chance_8",
+          "probability": "#",
+          "label": "No AE",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_8",
+          "to_state": "chance_9",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_8",
+          "to_state": "chance_10",
+          "probability": "pACdead",
+          "label": "Die",
+          "cost_increment": "cEOL",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_11",
+          "probability": "#",
+          "label": "Not progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_12",
+          "probability": "HR_PFS*pPFtoPD",
+          "label": "Progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_7",
+          "to_state": "chance_13",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_7",
+          "to_state": "chance_14",
+          "probability": "pACdead",
+          "label": "Die",
+          "cost_increment": "cEOL",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_13",
+          "to_state": "chance_15",
+          "probability": "#",
+          "label": "Continue",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_13",
+          "to_state": "chance_16",
+          "probability": "pStopRas",
+          "label": "Stop",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_15",
+          "to_state": "chance_17",
+          "probability": "#",
+          "label": "Not progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_15",
+          "to_state": "chance_18",
+          "probability": "HR_PFS*pPFtoPD",
+          "label": "Progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_16",
+          "to_state": "chance_19",
+          "probability": "#",
+          "label": "Not progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_16",
+          "to_state": "chance_20",
+          "probability": "HR_PFS*pPFtoPD",
+          "label": "Progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_7_2",
+          "to_state": "chance_13_2",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_7_2",
+          "to_state": "chance_14_2",
+          "probability": "pACdead",
+          "label": "Die",
+          "cost_increment": "cEOL",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_13_2",
+          "to_state": "chance_15_2",
+          "probability": "#",
+          "label": "Continue",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_13_2",
+          "to_state": "chance_16_2",
+          "probability": "pStopDia",
+          "label": "Stop",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_15_2",
+          "to_state": "chance_17_2",
+          "probability": "#",
+          "label": "Not progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_15_2",
+          "to_state": "chance_18_2",
+          "probability": "HR_PFS*pPFtoPD",
+          "label": "Progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_16_2",
+          "to_state": "chance_19_2",
+          "probability": "#",
+          "label": "Not progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_16_2",
+          "to_state": "chance_20_2",
+          "probability": "HR_PFS*pPFtoPD",
+          "label": "Progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance",
+          "to_state": "chance_7_2",
+          "probability": "pDiarrhea",
+          "label": "Diarrhea",
+          "effect_increment": "duDiarrhea",
+          "cost_increment": "cDiarrhea"
+        },
+        {
+          "from_state": "chance_7_2_2",
+          "to_state": "chance_13_2_2",
+          "probability": "#",
+          "label": "Survive",
+          "effect_increment": 0.0,
+          "cost_increment": 0.0
+        },
+        {
+          "from_state": "chance_7_2_2",
+          "to_state": "chance_14_2_2",
+          "probability": "pACdead",
+          "label": "Die",
+          "cost_increment": "cEOL",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_13_2_2",
+          "to_state": "chance_15_2_2",
+          "probability": "#",
+          "label": "Continue",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_13_2_2",
+          "to_state": "chance_16_2_2",
+          "probability": "pStopHyp",
+          "label": "Stop",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_15_2_2",
+          "to_state": "chance_17_2_2",
+          "probability": "#",
+          "label": "Not progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_15_2_2",
+          "to_state": "chance_18_2_2",
+          "probability": "HR_PFS*pPFtoPD",
+          "label": "Progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_16_2_2",
+          "to_state": "chance_19_2_2",
+          "probability": "#",
+          "label": "Not progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_16_2_2",
+          "to_state": "chance_20_2_2",
+          "probability": "HR_PFS*pPFtoPD",
+          "label": "Progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance",
+          "to_state": "chance_7_2_2",
+          "probability": "pHyperglycemia",
+          "label": "Hyperglycemia",
+          "effect_increment": "duHyperglycemia",
+          "cost_increment": "cHyperglycemia"
+        },
+        {
+          "from_state": "chance_9_2",
+          "to_state": "chance_11_2",
+          "probability": "#",
+          "label": "Not progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9_2",
+          "to_state": "chance_12_2",
+          "probability": "pPFtoPD",
+          "label": "Progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_3",
+          "to_state": "chance_9_2",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_3",
+          "to_state": "chance_5",
+          "probability": "pACdead",
+          "label": "Die",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_2",
+          "to_state": "chance_9_2_2",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_2",
+          "to_state": "chance_6",
+          "probability": "if(CurrentAge<100, HR_OS*pPDtoDead, 1)",
+          "label": "Die",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "cost",
+      "type": "cost",
+      "label": "Cost",
+      "symbol": "$",
+      "decimals": 2
+    },
+    {
+      "id": "effect",
+      "type": "effect",
+      "label": "Effect",
+      "symbol": "QALY",
+      "decimals": 2
+    },
+    {
+      "id": "icer",
+      "type": "icer",
+      "label": "ICER",
+      "symbol": "$/QALY",
+      "decimals": 2
+    }
+  ],
+  "cost_symbol": "$",
+  "cost_decimals": 2,
+  "effect_symbol": "QALY",
+  "effect_decimals": 2,
+  "analysis": {
+    "type": "CEA",
+    "effect_objective": "maximize",
+    "baseline_strategy_id": null,
+    "willingness_to_pay": 50000.0
+  },
+  "variables": [
+    {
+      "name": "cSub",
+      "definition": "if(_cycle<12, 8454.49 ,0)"
+    },
+    {
+      "name": "cLAB",
+      "definition": "if(_tenure==1, 38.21, 16.76)"
+    },
+    {
+      "name": "cImaging",
+      "definition": "if(_tenure==1,694.01, 170.91)"
+    },
+    {
+      "name": "cOV",
+      "definition": "if(_tenure==1, 167.40 , 128.43 )"
+    },
+    {
+      "name": "uPF",
+      "definition": "0.84*28/365.25"
+    },
+    {
+      "name": "uPD",
+      "definition": "0.443*28/365.25"
+    },
+    {
+      "name": "duRash",
+      "definition": "-0.03*12/365.25"
+    },
+    {
+      "name": "duDiarrhea",
+      "definition": "-0.06*4/365.25"
+    },
+    {
+      "name": "duHyperglycemia",
+      "definition": "-0.006*6/365.25"
+    },
+    {
+      "name": "pDiarrhea",
+      "definition": "RateToProb(rDiarrhea,16,1)"
+    },
+    {
+      "name": "pHyperglycemia",
+      "definition": "RateToProb(rHyperglycemia,16,1)"
+    },
+    {
+      "name": "pRash",
+      "definition": "RateToProb(rRash,16,1)"
+    },
+    {
+      "name": "CurrentAge",
+      "definition": "StartAge + _cycle*1/13"
+    },
+    {
+      "name": "pACdead",
+      "definition": "ProbToProb(t_mortality[floor(CurrentAge),0,1,\"exact\"],13,1)"
+    },
+    {
+      "name": "pPFtoPD",
+      "definition": "DistToProb(dist_TTP_FUL,_cycle,1)"
+    },
+    {
+      "name": "pStopDia",
+      "definition": "RateToProb(0.02,16,1)"
+    },
+    {
+      "name": "pStopHyp",
+      "definition": "RateToProb(0.006,16,1)"
+    },
+    {
+      "name": "pStopRas",
+      "definition": "RateToProb(0.07,16,1)"
+    },
+    {
+      "name": "pPDtoDead",
+      "definition": "DistToProb(dist_PPS_FUL,_cycle,1)"
+    },
+    {
+      "name": "cPF_cycle1",
+      "definition": "cCAP + cFUL*2 + cDA*2 + cOS*rPMW + cLAB + cImaging+cOV+cPI3K"
+    },
+    {
+      "name": "cPD",
+      "definition": "cSub+cLAB+cImaging+cOV"
+    },
+    {
+      "name": "cPF_regular",
+      "definition": "cCAP+cFUL+cDA+cOS*rPMW+cLAB+cImaging+cOV"
+    }
+  ],
+  "distributions": [
+    {
+      "name": "dist_TTP_FUL",
+      "type": "Lognormal",
+      "parameters": {
+        "meanlog": "1.3514",
+        "sdlog": "0.9757"
+      }
+    },
+    {
+      "name": "dist_PPS_FUL",
+      "type": "Lognormal",
+      "parameters": {
+        "meanlog": "3.352",
+        "sdlog": "1.165"
+      }
+    }
+  ],
+  "distribution": {
+    "name": "dist_TTP_FUL",
+    "type": "Lognormal",
+    "parameters": {
+      "meanlog": "1.3514",
+      "sdlog": "0.9757"
+    }
+  },
+  "tables": [
+    {
+      "name": "t_mortality",
+      "headers_not_included": false,
+      "file_name": "All-cause mortality_header.csv",
+      "data": [
+        {
+          "Age": 0,
+          "Mortality": 0.005588
+        },
+        {
+          "Age": 1,
+          "Mortality": 0.000439
+        },
+        {
+          "Age": 2,
+          "Mortality": 0.000283
+        },
+        {
+          "Age": 3,
+          "Mortality": 0.000213
+        },
+        {
+          "Age": 4,
+          "Mortality": 0.000161
+        },
+        {
+          "Age": 5,
+          "Mortality": 0.000149
+        },
+        {
+          "Age": 6,
+          "Mortality": 0.000136
+        },
+        {
+          "Age": 7,
+          "Mortality": 0.000125
+        },
+        {
+          "Age": 8,
+          "Mortality": 0.000113
+        },
+        {
+          "Age": 9,
+          "Mortality": 0.0001
+        },
+        {
+          "Age": 10,
+          "Mortality": 9.2e-05
+        },
+        {
+          "Age": 11,
+          "Mortality": 0.000101
+        },
+        {
+          "Age": 12,
+          "Mortality": 0.000137
+        },
+        {
+          "Age": 13,
+          "Mortality": 0.000206
+        },
+        {
+          "Age": 14,
+          "Mortality": 0.000299
+        },
+        {
+          "Age": 15,
+          "Mortality": 0.0004
+        },
+        {
+          "Age": 16,
+          "Mortality": 0.000497
+        },
+        {
+          "Age": 17,
+          "Mortality": 0.000587
+        },
+        {
+          "Age": 18,
+          "Mortality": 0.000666
+        },
+        {
+          "Age": 19,
+          "Mortality": 0.000739
+        },
+        {
+          "Age": 20,
+          "Mortality": 0.000817
+        },
+        {
+          "Age": 21,
+          "Mortality": 0.000899
+        },
+        {
+          "Age": 22,
+          "Mortality": 0.000971
+        },
+        {
+          "Age": 23,
+          "Mortality": 0.001031
+        },
+        {
+          "Age": 24,
+          "Mortality": 0.001081
+        },
+        {
+          "Age": 25,
+          "Mortality": 0.001126
+        },
+        {
+          "Age": 26,
+          "Mortality": 0.001177
+        },
+        {
+          "Age": 27,
+          "Mortality": 0.001243
+        },
+        {
+          "Age": 28,
+          "Mortality": 0.001327
+        },
+        {
+          "Age": 29,
+          "Mortality": 0.001422
+        },
+        {
+          "Age": 30,
+          "Mortality": 0.00152
+        },
+        {
+          "Age": 31,
+          "Mortality": 0.001611
+        },
+        {
+          "Age": 32,
+          "Mortality": 0.001693
+        },
+        {
+          "Age": 33,
+          "Mortality": 0.001765
+        },
+        {
+          "Age": 34,
+          "Mortality": 0.001834
+        },
+        {
+          "Age": 35,
+          "Mortality": 0.001904
+        },
+        {
+          "Age": 36,
+          "Mortality": 0.001983
+        },
+        {
+          "Age": 37,
+          "Mortality": 0.002074
+        },
+        {
+          "Age": 38,
+          "Mortality": 0.002179
+        },
+        {
+          "Age": 39,
+          "Mortality": 0.002295
+        },
+        {
+          "Age": 40,
+          "Mortality": 0.002424
+        },
+        {
+          "Age": 41,
+          "Mortality": 0.002557
+        },
+        {
+          "Age": 42,
+          "Mortality": 0.002678
+        },
+        {
+          "Age": 43,
+          "Mortality": 0.002784
+        },
+        {
+          "Age": 44,
+          "Mortality": 0.002888
+        },
+        {
+          "Age": 45,
+          "Mortality": 0.003008
+        },
+        {
+          "Age": 46,
+          "Mortality": 0.003163
+        },
+        {
+          "Age": 47,
+          "Mortality": 0.003356
+        },
+        {
+          "Age": 48,
+          "Mortality": 0.003586
+        },
+        {
+          "Age": 49,
+          "Mortality": 0.003843
+        },
+        {
+          "Age": 50,
+          "Mortality": 0.00412
+        },
+        {
+          "Age": 51,
+          "Mortality": 0.00442
+        },
+        {
+          "Age": 52,
+          "Mortality": 0.004752
+        },
+        {
+          "Age": 53,
+          "Mortality": 0.00513
+        },
+        {
+          "Age": 54,
+          "Mortality": 0.005562
+        },
+        {
+          "Age": 55,
+          "Mortality": 0.006022
+        },
+        {
+          "Age": 56,
+          "Mortality": 0.006524
+        },
+        {
+          "Age": 57,
+          "Mortality": 0.007106
+        },
+        {
+          "Age": 58,
+          "Mortality": 0.007769
+        },
+        {
+          "Age": 59,
+          "Mortality": 0.008476
+        },
+        {
+          "Age": 60,
+          "Mortality": 0.009202
+        },
+        {
+          "Age": 61,
+          "Mortality": 0.009926
+        },
+        {
+          "Age": 62,
+          "Mortality": 0.010656
+        },
+        {
+          "Age": 63,
+          "Mortality": 0.011405
+        },
+        {
+          "Age": 64,
+          "Mortality": 0.012197
+        },
+        {
+          "Age": 65,
+          "Mortality": 0.013054
+        },
+        {
+          "Age": 66,
+          "Mortality": 0.014088
+        },
+        {
+          "Age": 67,
+          "Mortality": 0.015075
+        },
+        {
+          "Age": 68,
+          "Mortality": 0.01615
+        },
+        {
+          "Age": 69,
+          "Mortality": 0.017324
+        },
+        {
+          "Age": 70,
+          "Mortality": 0.01846
+        },
+        {
+          "Age": 71,
+          "Mortality": 0.019921
+        },
+        {
+          "Age": 72,
+          "Mortality": 0.021541
+        },
+        {
+          "Age": 73,
+          "Mortality": 0.023476
+        },
+        {
+          "Age": 74,
+          "Mortality": 0.025685
+        },
+        {
+          "Age": 75,
+          "Mortality": 0.028219
+        },
+        {
+          "Age": 76,
+          "Mortality": 0.030546
+        },
+        {
+          "Age": 77,
+          "Mortality": 0.034523
+        },
+        {
+          "Age": 78,
+          "Mortality": 0.037655
+        },
+        {
+          "Age": 79,
+          "Mortality": 0.042211
+        },
+        {
+          "Age": 80,
+          "Mortality": 0.046538
+        },
+        {
+          "Age": 81,
+          "Mortality": 0.052311
+        },
+        {
+          "Age": 82,
+          "Mortality": 0.058338
+        },
+        {
+          "Age": 83,
+          "Mortality": 0.064645
+        },
+        {
+          "Age": 84,
+          "Mortality": 0.071961
+        },
+        {
+          "Age": 85,
+          "Mortality": 0.079677
+        },
+        {
+          "Age": 86,
+          "Mortality": 0.08958
+        },
+        {
+          "Age": 87,
+          "Mortality": 0.100503
+        },
+        {
+          "Age": 88,
+          "Mortality": 0.112498
+        },
+        {
+          "Age": 89,
+          "Mortality": 0.125607
+        },
+        {
+          "Age": 90,
+          "Mortality": 0.139858
+        },
+        {
+          "Age": 91,
+          "Mortality": 0.155262
+        },
+        {
+          "Age": 92,
+          "Mortality": 0.171809
+        },
+        {
+          "Age": 93,
+          "Mortality": 0.189467
+        },
+        {
+          "Age": 94,
+          "Mortality": 0.208176
+        },
+        {
+          "Age": 95,
+          "Mortality": 0.22785
+        },
+        {
+          "Age": 96,
+          "Mortality": 0.248376
+        },
+        {
+          "Age": 97,
+          "Mortality": 0.269615
+        },
+        {
+          "Age": 98,
+          "Mortality": 0.291405
+        },
+        {
+          "Age": 99,
+          "Mortality": 0.313565
+        },
+        {
+          "Age": 100,
+          "Mortality": 1.0
+        }
+      ],
+      "columns": [
+        "Age",
+        "Mortality"
+      ],
+      "loaded_headers_not_included": false
+    }
+  ],
+  "note": "Adapted from \"Cost-Effectiveness of Capivasertib as a Second-Line Therapy for Advanced Breast Cancer\" - Nguyen TTH, Mital S. PharmacoEconomics. 2025;43(3):351-361. https://doi.org/10.1007/s40273-024-01456-x. Difference from the publication: all-cause mortality uses 2023 data (publication: 2019)."
+}

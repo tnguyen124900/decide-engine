@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "decide-engine"
+version = "0.1.0"
+description = "Open calculation engine for health economic models: decision trees, Markov, partitioned survival, microsimulation and network meta-analysis."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Trang Nguyen" }]
+requires-python = ">=3.10"
+keywords = ["health economics", "HEOR", "cost-effectiveness", "decision tree", "Markov", "microsimulation", "network meta-analysis"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering",
+]
+dependencies = ["numpy>=1.24", "scipy>=1.11", "pandas>=2.0", "openpyxl>=3.1"]
+
+[project.optional-dependencies]
+docx = ["python-docx>=1.1", "pillow>=10.0"]
+dev = ["pytest>=8.0", "python-docx>=1.1", "pillow>=10.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["heor_tree_engine*"]
+
+[tool.setuptools]
+py-modules = ["markov_report", "microsim_report", "nma_editor_support", "nma_prisma", "nma_report", "nma_sof", "psm_editor_support", "psm_report", "report_docx", "tree_report"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]

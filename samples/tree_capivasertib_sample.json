@@ -1,0 +1,544 @@
+{
+  "root_id": "strategies",
+  "parameters": [
+    {
+      "name": "cEVE_EXE_per_cycle",
+      "base": 15552.4
+    },
+    {
+      "name": "cEXE_per_cycle",
+      "base": 1140.16
+    },
+    {
+      "name": "cPAL_per_cycle",
+      "base": 18890.28
+    },
+    {
+      "name": "cChemo1",
+      "base": 0.0,
+      "definition": "6069*7.1"
+    },
+    {
+      "name": "cChemo2",
+      "base": 0.0,
+      "definition": "6069*3.7"
+    },
+    {
+      "name": "cChemo3",
+      "base": 0.0,
+      "definition": "6069*3.3"
+    },
+    {
+      "name": "tEVE_EXE",
+      "base": 10.6
+    },
+    {
+      "name": "tEXE",
+      "base": 4.1
+    },
+    {
+      "name": "tPAL",
+      "base": 11.2
+    },
+    {
+      "name": "tChemo1",
+      "base": 7.1
+    },
+    {
+      "name": "tChemo2",
+      "base": 3.7
+    },
+    {
+      "name": "tChemo3",
+      "base": 3.1
+    }
+  ],
+  "nodes": [
+    {
+      "id": "strategies",
+      "type": "decision",
+      "branches": [
+        {
+          "label": "branch",
+          "child_id": "chance_10"
+        }
+      ]
+    },
+    {
+      "id": "1",
+      "type": "chance",
+      "branches": [
+        {
+          "label": "3rd endo",
+          "child_id": "chance_2",
+          "probability": 0.459,
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "label": "1st chemo",
+          "child_id": "2",
+          "probability": "#",
+          "cost_increment": "cChemo1",
+          "effect_increment": "tChemo1"
+        }
+      ],
+      "label": "1"
+    },
+    {
+      "id": "No treatment",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "label": "No treatment",
+      "branches": []
+    },
+    {
+      "id": "chance_2",
+      "type": "chance",
+      "branches": [
+        {
+          "label": "EVE+EXE",
+          "child_id": "chance_6",
+          "probability": 0.292,
+          "cost_increment": "cEVE",
+          "effect_increment": "tEVE_EXE"
+        },
+        {
+          "label": "EXE",
+          "child_id": "chance_7",
+          "probability": 0.363,
+          "cost_increment": "cEXE",
+          "effect_increment": "tEXE"
+        },
+        {
+          "label": "PAL+FUL",
+          "child_id": "chance_8",
+          "probability": "#",
+          "cost_increment": "cPAL",
+          "effect_increment": "tPAL"
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "type": "chance",
+      "label": "2",
+      "year": 0.0,
+      "branches": [
+        {
+          "label": "2nd chemo",
+          "child_id": "chance",
+          "probability": 0.64,
+          "cost_increment": "cChemo2",
+          "effect_increment": "tChemo2"
+        },
+        {
+          "label": "No treatment",
+          "child_id": "chance_3",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "chance",
+      "type": "chance",
+      "branches": [
+        {
+          "label": "3rd chemo",
+          "child_id": "chance_4",
+          "probability": 0.68,
+          "cost_increment": "cChemo3",
+          "effect_increment": "tChemo3"
+        },
+        {
+          "label": "No treatment",
+          "child_id": "chance_5",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "chance_3",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "chance_4",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "chance_5",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "chance_6",
+      "type": "chance",
+      "branches": [
+        {
+          "label": "1st chemo",
+          "child_id": "2_2",
+          "probability": 0.87,
+          "cost_increment": "cChemo1",
+          "effect_increment": "tChemo1"
+        },
+        {
+          "label": "No treatment",
+          "child_id": "No treatment_2",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "chance_7",
+      "type": "chance",
+      "branches": [
+        {
+          "label": "1st chemo",
+          "child_id": "2_2_2",
+          "probability": 0.87,
+          "cost_increment": "cChemo1",
+          "effect_increment": "tChemo1"
+        },
+        {
+          "label": "No treatment",
+          "child_id": "No treatment_2_2",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "chance_8",
+      "type": "chance",
+      "branches": [
+        {
+          "label": "1st chemo",
+          "child_id": "2_2_2_2",
+          "probability": 0.87,
+          "cost_increment": "cChemo1",
+          "effect_increment": "tChemo1"
+        },
+        {
+          "label": "no treatment",
+          "child_id": "No treatment_2_2_2",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "2_2",
+      "type": "chance",
+      "label": "2",
+      "year": 0.0,
+      "branches": [
+        {
+          "label": "2nd chemo",
+          "child_id": "chance_9",
+          "probability": 0.64,
+          "cost_increment": "cChemo2",
+          "effect_increment": "tChemo2"
+        },
+        {
+          "label": "No treatment",
+          "child_id": "chance_3_2",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "chance_9",
+      "type": "chance",
+      "branches": [
+        {
+          "label": "3rd chemo",
+          "child_id": "chance_4_2",
+          "probability": 0.68,
+          "cost_increment": "cChemo3",
+          "effect_increment": "tChemo3"
+        },
+        {
+          "label": "No treatment",
+          "child_id": "chance_5_2",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "chance_3_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "chance_4_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "chance_5_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "No treatment_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "label": "No treatment",
+      "branches": []
+    },
+    {
+      "id": "2_2_2",
+      "type": "chance",
+      "label": "2",
+      "year": 0.0,
+      "branches": [
+        {
+          "label": "2nd chemo",
+          "child_id": "chance_9_2",
+          "probability": 0.64,
+          "cost_increment": "cChemo2",
+          "effect_increment": "tChemo2"
+        },
+        {
+          "label": "No treatment",
+          "child_id": "chance_3_2_2",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "chance_9_2",
+      "type": "chance",
+      "branches": [
+        {
+          "label": "3rd chemo",
+          "child_id": "chance_4_2_2",
+          "probability": 0.68,
+          "cost_increment": "cChemo3",
+          "effect_increment": "tChemo3"
+        },
+        {
+          "label": "No treatment",
+          "child_id": "chance_5_2_2",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "chance_3_2_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "chance_4_2_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "chance_5_2_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "No treatment_2_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "label": "No treatment",
+      "branches": []
+    },
+    {
+      "id": "2_2_2_2",
+      "type": "chance",
+      "label": "2",
+      "year": 0.0,
+      "branches": [
+        {
+          "label": "2nd chemo",
+          "child_id": "chance_9_2_2",
+          "probability": 0.64,
+          "cost_increment": "cChemo2",
+          "effect_increment": "tChemo2"
+        },
+        {
+          "label": "No treatment",
+          "child_id": "chance_3_2_2_2",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "chance_9_2_2",
+      "type": "chance",
+      "branches": [
+        {
+          "label": "3rd chemo",
+          "child_id": "chance_4_2_2_2",
+          "probability": 0.68,
+          "cost_increment": "cChemo3",
+          "effect_increment": "tChemo3"
+        },
+        {
+          "label": "No treatment",
+          "child_id": "chance_5_2_2_2",
+          "probability": "#",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "chance_3_2_2_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "chance_4_2_2_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "chance_5_2_2_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "branches": []
+    },
+    {
+      "id": "No treatment_2_2_2",
+      "type": "terminal",
+      "cost": 0.0,
+      "effect": 0.0,
+      "year": 0.0,
+      "label": "No treatment",
+      "branches": []
+    },
+    {
+      "id": "chance_10",
+      "type": "chance",
+      "branches": [
+        {
+          "label": "Continue treatment",
+          "child_id": "1",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0,
+          "probability": 0.799
+        },
+        {
+          "label": "No treatment",
+          "child_id": "No treatment",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0,
+          "probability": "#"
+        }
+      ]
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "cost",
+      "type": "cost",
+      "label": "Cost",
+      "symbol": "$",
+      "decimals": 2
+    },
+    {
+      "id": "effect",
+      "type": "effect",
+      "label": "Effect",
+      "symbol": "Duration",
+      "decimals": 2
+    }
+  ],
+  "cost_symbol": "$",
+  "cost_decimals": 2,
+  "effect_symbol": "Duration",
+  "effect_decimals": 2,
+  "discount_cost_value": 0.0,
+  "discount_effect_value": 0.0,
+  "analysis": {
+    "type": "CEA",
+    "effect_objective": "maximize",
+    "baseline_strategy_id": null,
+    "willingness_to_pay": 50000.0,
+    "cost_outcome_id": "cost",
+    "effect_outcome_id": "effect"
+  },
+  "distributions": [],
+  "variables": [
+    {
+      "name": "cEVE",
+      "definition": "cEVE_EXE_per_cycle * tEVE_EXE"
+    },
+    {
+      "name": "cEXE",
+      "definition": "cEXE_per_cycle*tEXE"
+    },
+    {
+      "name": "cPAL",
+      "definition": "cPAL_per_cycle*tPAL"
+    }
+  ],
+  "distribution": {},
+  "tables": [],
+  "note": "Adapted from \"Cost-Effectiveness of Capivasertib as a Second-Line Therapy for Advanced Breast Cancer\" - Nguyen TTH, Mital S. PharmacoEconomics. 2025;43(3):351-361. https://doi.org/10.1007/s40273-024-01456-x. This decision tree calculates the subsequent therapy costs (3rd-line endocrine therapy, 1st-3rd line chemotherapy)."
+}

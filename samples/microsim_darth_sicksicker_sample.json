@@ -1,0 +1,540 @@
+{
+  "id": "microsim_model",
+  "name": "Sick-Sicker (DARTH, Krijkamp 2018)",
+  "cycles": 31,
+  "half_cycle_correction": false,
+  "cycles_per_year": 1.0,
+  "discount_cost_value": 0.03,
+  "discount_cost_unit": "per cycle",
+  "discount_effect_value": 0.03,
+  "discount_effect_unit": "per cycle",
+  "n_patients": 100000,
+  "random_seed": 1,
+  "tracker_reset_timing": "on_entry",
+  "trackers": [],
+  "parameters": [
+    {
+      "name": "cH",
+      "base": 2000.0,
+      "_id": "10c8d54995584ebfbba2bb6969b5a97a",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "cS1",
+      "base": 4000.0,
+      "_id": "9fc5a8e1c4954b8d98b0b9b9b5b1ffe8",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "cS2",
+      "base": 15000.0,
+      "_id": "474a4069469d426988a72f4c2466a9d9",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "cT",
+      "base": 12000.0,
+      "_id": "e6dad061571c4687b8b72cb647faff9b",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "uH",
+      "base": 1.0,
+      "_id": "7698eb387a5246c1aafaa0d568428be6",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "uS1_Y",
+      "base": 0.95,
+      "_id": "d184b66e03104d10b879e541da427163",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "uS1_N",
+      "base": 0.75,
+      "_id": "3e48019d9a214e5985cef71ef8b0cd8f",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "uS2",
+      "base": 0.5,
+      "_id": "4e63720e5f004f7b9db351c6d08f1cad",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "pHD",
+      "base": 0.005,
+      "_id": "f6d0ba2a18d243b48c8dc60323c75ee2",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "pHS1",
+      "base": 0.15,
+      "_id": "924bbf8612dc43a7a65e18eb130cb8c5",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "pS1H",
+      "base": 0.5,
+      "_id": "fac28ae0445743ff904d99dc2d0eeffa",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "pS1S2",
+      "base": 0.105,
+      "_id": "4e2b1c7d595e45548f84fef2f257066f",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "pS1D",
+      "base": 0.014925125,
+      "_id": "948809796fcd4807b07950116ae072c3",
+      "source": "Krijkamp et al. 2018, Table 1"
+    },
+    {
+      "name": "pS2D",
+      "base": 0.0488898695,
+      "_id": "e1d9c6a8450a47ff9e01cfc370dda08b",
+      "source": "Krijkamp et al. 2018, Table 1"
+    }
+  ],
+  "variables": [],
+  "distributions": [],
+  "tables": [],
+  "strategies": [
+    {
+      "id": "no_trt",
+      "name": "No treatment",
+      "states": [
+        {
+          "id": "H",
+          "name": "Healthy",
+          "cost": "cH",
+          "effect": "uH",
+          "initial_prob": 1.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null,
+          "tenure_applied": false
+        },
+        {
+          "id": "S1",
+          "name": "Sick",
+          "cost": "cS1",
+          "effect": "uS1_N",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null,
+          "tenure_applied": false
+        },
+        {
+          "id": "S2",
+          "name": "Sicker",
+          "cost": "cS2",
+          "effect": "uS2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null
+        },
+        {
+          "id": "D",
+          "name": "Dead",
+          "cost": 0.0,
+          "effect": 0.0,
+          "initial_prob": 0.0,
+          "is_absorbing": true,
+          "canvas_kind": "terminal",
+          "canvas_parent": null
+        },
+        {
+          "id": "h_stay",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "H",
+          "canvas_alias_of": "H"
+        },
+        {
+          "id": "h_sick",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "H",
+          "canvas_alias_of": "S1"
+        },
+        {
+          "id": "h_dead",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "H",
+          "canvas_alias_of": "D"
+        },
+        {
+          "id": "s1_rec",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S1",
+          "canvas_alias_of": "H"
+        },
+        {
+          "id": "s1_stay",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S1",
+          "canvas_alias_of": "S1"
+        },
+        {
+          "id": "s1_worse",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S1",
+          "canvas_alias_of": "S2"
+        },
+        {
+          "id": "s1_die",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S1",
+          "canvas_alias_of": "D"
+        },
+        {
+          "id": "s2_stay",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S2",
+          "canvas_alias_of": "S2"
+        },
+        {
+          "id": "s2_die",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S2",
+          "canvas_alias_of": "D"
+        }
+      ],
+      "transitions": [
+        {
+          "from_state": "H",
+          "to_state": "h_sick",
+          "probability": "pHS1",
+          "label": "Get sick",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "H",
+          "to_state": "h_dead",
+          "probability": "pHD",
+          "label": "Die",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "H",
+          "to_state": "h_stay",
+          "probability": "#",
+          "label": "Stay healthy",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S1",
+          "to_state": "s1_rec",
+          "probability": "pS1H",
+          "label": "Recover",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S1",
+          "to_state": "s1_worse",
+          "probability": "pS1S2",
+          "label": "Progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S1",
+          "to_state": "s1_die",
+          "probability": "pS1D",
+          "label": "Die",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S1",
+          "to_state": "s1_stay",
+          "probability": "#",
+          "label": "Stay sick",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S2",
+          "to_state": "s2_die",
+          "probability": "pS2D",
+          "label": "Die",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S2",
+          "to_state": "s2_stay",
+          "probability": "#",
+          "label": "Stay sicker",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    },
+    {
+      "id": "trt",
+      "name": "Treatment",
+      "states": [
+        {
+          "id": "H",
+          "name": "Healthy",
+          "cost": "cH",
+          "effect": "uH",
+          "initial_prob": 1.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null
+        },
+        {
+          "id": "S1",
+          "name": "Sick",
+          "cost": "cS1+cT",
+          "effect": "uS1_Y",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null
+        },
+        {
+          "id": "S2",
+          "name": "Sicker",
+          "cost": "cS2+cT",
+          "effect": "uS2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null,
+          "tenure_applied": false
+        },
+        {
+          "id": "D",
+          "name": "Dead",
+          "cost": 0.0,
+          "effect": 0.0,
+          "initial_prob": 0.0,
+          "is_absorbing": true,
+          "canvas_kind": "terminal",
+          "canvas_parent": null
+        },
+        {
+          "id": "h_stay",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "H",
+          "canvas_alias_of": "H"
+        },
+        {
+          "id": "h_sick",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "H",
+          "canvas_alias_of": "S1"
+        },
+        {
+          "id": "h_dead",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "H",
+          "canvas_alias_of": "D"
+        },
+        {
+          "id": "s1_rec",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S1",
+          "canvas_alias_of": "H"
+        },
+        {
+          "id": "s1_stay",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S1",
+          "canvas_alias_of": "S1"
+        },
+        {
+          "id": "s1_worse",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S1",
+          "canvas_alias_of": "S2"
+        },
+        {
+          "id": "s1_die",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S1",
+          "canvas_alias_of": "D"
+        },
+        {
+          "id": "s2_stay",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S2",
+          "canvas_alias_of": "S2"
+        },
+        {
+          "id": "s2_die",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "S2",
+          "canvas_alias_of": "D"
+        }
+      ],
+      "transitions": [
+        {
+          "from_state": "H",
+          "to_state": "h_sick",
+          "probability": "pHS1",
+          "label": "Get sick",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "H",
+          "to_state": "h_dead",
+          "probability": "pHD",
+          "label": "Die",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "H",
+          "to_state": "h_stay",
+          "probability": "#",
+          "label": "Stay healthy",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S1",
+          "to_state": "s1_rec",
+          "probability": "pS1H",
+          "label": "Recover",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S1",
+          "to_state": "s1_worse",
+          "probability": "pS1S2",
+          "label": "Progress",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S1",
+          "to_state": "s1_die",
+          "probability": "pS1D",
+          "label": "Die",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S1",
+          "to_state": "s1_stay",
+          "probability": "#",
+          "label": "Stay sick",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S2",
+          "to_state": "s2_die",
+          "probability": "pS2D",
+          "label": "Die",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "S2",
+          "to_state": "s2_stay",
+          "probability": "#",
+          "label": "Stay sicker",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ]
+    }
+  ],
+  "patient_trace_sample_size": 30,
+  "outcomes": [
+    {
+      "id": "cost",
+      "type": "cost",
+      "label": "Cost",
+      "symbol": "$",
+      "decimals": 0
+    },
+    {
+      "id": "effect",
+      "type": "effect",
+      "label": "QALY",
+      "symbol": "QALY",
+      "decimals": 2
+    }
+  ],
+  "cost_symbol": "$",
+  "cost_decimals": 0,
+  "effect_symbol": "QALY",
+  "effect_decimals": 2,
+  "analysis": {
+    "type": "CEA",
+    "effect_objective": "maximize",
+    "baseline_strategy_id": null,
+    "willingness_to_pay": 50000.0
+  },
+  "distribution": {},
+  "note": "Validated with Krijkamp EM, Alarid-Escudero F, Enns EA, Jalal HJ, Hunink MGM, Pechlivanoglou P. Microsimulation Modeling for Health Decision Sciences Using R: A Tutorial. Med Decis Making. 2018;38(3):400-422. https://doi.org/10.1177/0272989X18754513."
+}

@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.venv/
+build/
+dist/
+.DS_Store
+secrets.toml
+.env
+
+# R session history
+.Rhistory
+
+# App build output
+app/build_desktop/
+app/dist/

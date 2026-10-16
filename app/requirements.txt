@@ -1,0 +1,15 @@
+# Pinned to the versions the app was developed and tested with (.venv, 2026-09).
+# Local development can still use: pip install -e ".[app]"
+streamlit==1.64.0
+streamlit-flow-component==1.6.1
+pandas==3.0.6
+numpy==2.5.3
+scipy==1.18.1
+altair==6.3.0
+openpyxl==3.1.5
+lxml>=4.9
+xlrd==2.0.2
+reportlab>=4.0
+vl-convert-python>=1.0
+pypdf>=6.0
+streamlit-pdf-viewer>=0.0.30

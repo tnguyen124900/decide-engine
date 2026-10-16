@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Markov canvas</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  #root { position: relative; width: 100%; height: 100%; overflow: auto; outline: none; }
+  svg { display: block; user-select: none; }
+  .mc-node { cursor: grab; }
+  .mc-node.dragging { cursor: grabbing; }
+  .mc-edge-label-bg { fill: #ffffff; fill-opacity: 0.92; }
+  .mc-edge-label-text { fill: #334155; font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .mc-edge-label-editable { cursor: text; }
+  .mc-edge-label-editable:hover { fill: #1d4ed8; }
+  .mc-node-name { fill: #172235; font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 600; cursor: text; }
+  .mc-node-cycle-label { fill: #64748b; font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; cursor: text; }
+  .mc-node-cycle-label:hover { fill: #1d4ed8; }
+  .mc-node-result-label { fill: #dc2626; font: 700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .mc-edge-label-text-error { fill: #c2410c !important; font-weight: 700; }
+  .mc-edge-label-bg-error { fill: #fff7ed; fill-opacity: 0.98; stroke: #f97316; stroke-width: 1.25; }
+  .mc-menu {
+    position: absolute;
+    background: #ffffff;
+    border: 1px solid #d7dee8;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+    padding: 4px;
+    font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    z-index: 10;
+    min-width: 140px;
+  }
+  .mc-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #172235;
+  }
+  .mc-menu button:hover { background: #f1f5f9; }
+  .mc-menu button.danger { color: #b91c1c; }
+</style>
+</head>
+<body>
+<div id="root" tabindex="0"></div>
+<script>
+(function () {
+  "use strict";
+
+  /* ---- Minimal Streamlit Components v1 postMessage protocol ------------
+     Reimplemented directly (no streamlit-component-lib dependency) so this
+     component needs no npm/build step -- it is served as a single static
+     file straight from disk via components.v1.declare_component(path=...).
+  */
+  function sendToStreamlit(type, data) {
+    window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, data || {}), "*");
+  }
+  function streamlitReady() { sendToStreamlit("streamlit:componentReady", { apiVersion: 1 }); }
+  function setFrameHeight(height) { sendToStreamlit("streamlit:setFrameHeight", { height: height }); }
+  function setComponentValue(value) { sendToStreamlit("streamlit:setComponentValue", { value: value, dataType: "json" }); }
+
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    var node = document.createElementNS(NS, tag);
+    if (attrs) {
+      for (var key in attrs) {
+        if (Object.prototype.hasOwnProperty.call(attrs, key)) node.setAttribute(key, attrs[key]);
+      }
+    }
+    return node;
+  }
+
+  // Node shape geometry, mirroring the sizes/colors used on the Decision
+  // Tree canvas and the previous streamlit-flow Markov canvas so the visual
+  // language stays consistent across the app.
+  var SHAPE = {
+    decision: { w: 24, h: 24, fill: "#2f6fd6", stroke: "#1d4f9b", shape: "square" },
+    root: { w: 36, h: 36, fill: "#7c3aed", stroke: "#5b21b6", shape: "circle" },
+    chance: { w: 26, h: 26, fill: "#2ea66a", stroke: "#176b45", shape: "circle" },
+    // Microsim-only node kind:
+    // same light-blue circle/"P" letter as the PSM Editor's own psm
+    // node (psm_canvas_component/frontend/index.html's SHAPE.psm),
+    // kept a byte-for-byte match so the two screens' PSM nodes look
+    // identical, per "Option A" (already settled in the design
+    // doc).
+    psm: { w: 36, h: 36, fill: "#bfdbfe", stroke: "#1d4f9b", shape: "circle" },
+    terminal: { w: 32, h: 28, fill: "#f97316", stroke: "#f97316", shape: "triangle" }
+  };
+  var PADDING = 40;
+  var ELBOW = 26;
+
+  var root = document.getElementById("root");
+  var state = {
+    nodes: [],
+    edges: [],
+    zoom: 1,
+    selectedId: null,
+    contentW: 400,
+    contentH: 300,
+    viewportHeight: 720,
+    resetScrollNonce: null,
+    hasRealData: false,
+    lastExportNonce: 0,
+    styles: {},
+    hasTextStyles: false
+  };
+  var drag = null; // {id, offsetX, offsetY, moved}
+  var menuEl = null;
+  var frameHeightFallbackTimer = null;
+  // Set once the first real "streamlit:render" payload has been
+  // applied -- used to skip reporting the tiny placeholder height
+  // the very first, data-less render() produces (see below).
+
+  function closeMenu() {
+    if (menuEl && menuEl.parentNode) menuEl.parentNode.removeChild(menuEl);
+    menuEl = null;
+  }
+
+  // Keep a just-opened context menu fully inside the iframe's own
+  // viewport (html/body clip anything outside it), instead of letting
+  // it render off the bottom/right edge when opened near a boundary.
+  function clampMenuToViewport() {
+    if (!menuEl) return;
+    var rect = menuEl.getBoundingClientRect();
+    var margin = 4;
+    var maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+    var maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+    var left = parseFloat(menuEl.style.left) || 0;
+    var top = parseFloat(menuEl.style.top) || 0;
+    left = Math.min(Math.max(left, margin), maxLeft);
+    top = Math.min(Math.max(top, margin), maxTop);
+    menuEl.style.left = left + "px";
+    menuEl.style.top = top + "px";
+  }
+
+  function nodeById(id) {
+    for (var i = 0; i < state.nodes.length; i++) if (state.nodes[i].id === id) return state.nodes[i];
+    return null;
+  }
+
+  // Apply the user's canvas text settings (font, size, bold, italic,
+  // underline -- sent by Python inside every node as text_styles), ported
+  // from tree_canvas_component's own styleText(). A true no-op when
+  // state.hasTextStyles is false (Microsim/ABM canvases, and Markov
+  // before the user opens the format bar) -- no inline style is set at
+  // all, so the existing CSS defaults (mc-node-name / mc-edge-label-text)
+  // keep rendering exactly as before this feature existed.
+  var DEFAULT_TEXT_STYLE = { family: "", size: 12, bold: false, italic: false, underline: false };
+  function styleText(textEl, kind, baseWeight) {
+    if (!state.hasTextStyles) return;
+    var t = (state.styles && state.styles[kind]) || DEFAULT_TEXT_STYLE;
+    if (t.family) textEl.style.fontFamily = t.family;
+    textEl.style.fontSize = (t.size || DEFAULT_TEXT_STYLE.size) + "px";
+    textEl.style.fontWeight = t.bold ? "700" : String(baseWeight);
+    textEl.style.fontStyle = t.italic ? "italic" : "normal";
+    textEl.style.textDecoration = t.underline ? "underline" : "none";
+  }
+
+  function computeBounds() {
+    var minX = 0, minY = 0, maxX = 0, maxY = 0;
+    state.nodes.forEach(function (n) {
+      var shape = SHAPE[n.kind] || SHAPE.chance;
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y - (n.show_num && n.num ? 24 : 0)); // room for the number above the node
+      maxX = Math.max(maxX, n.x + shape.w + 220); // room for the edge label text to the right
+      maxY = Math.max(maxY, n.y + shape.h);
+    });
+    // Extra slack beyond the tight content bounds so the canvas always
+    // has comfortable working room past the last node, instead of the
+    // grid and scroll area stopping right at the edge of what already
+    // exists.
+    var EXTRA_BUFFER_X = 320;
+    var EXTRA_BUFFER_Y = 260;
+    state.contentW = Math.max(400, maxX - minX + PADDING * 2 + EXTRA_BUFFER_X);
+    state.contentH = Math.max(160, maxY - minY + PADDING * 2 + EXTRA_BUFFER_Y);
+    state.offsetX = PADDING - minX;
+    state.offsetY = PADDING - minY;
+  }
+
+  function shapePath(shape, cx, cy) {
+    if (shape.shape === "circle") {
+      return { tag: "circle", attrs: { cx: cx, cy: cy, r: shape.w / 2 } };
+    }
+    if (shape.shape === "square") {
+      return { tag: "rect", attrs: { x: cx - shape.w / 2, y: cy - shape.h / 2, width: shape.w, height: shape.h, rx: 3 } };
+    }
+    // upward triangle (terminal node), matching the CSS clip-path polygon
+    // used previously: 50% 0%, 100% 100%, 0% 100%.
+    var x0 = cx - shape.w / 2, x1 = cx + shape.w / 2;
+    var yTop = cy - shape.h / 2, yBot = cy + shape.h / 2;
+    var points = [cx, yTop, x1, yBot, x0, yBot].join(",");
+    return { tag: "polygon", attrs: { points: points } };
+  }
+
+  function edgePath(sourceCenter, targetCenter) {
+    var x0 = sourceCenter.x, y0 = sourceCenter.y;
+    var x1 = targetCenter.x, y1 = targetCenter.y;
+    if (Math.abs(y0 - y1) < 0.5) {
+      return "M " + x0 + " " + y0 + " L " + x1 + " " + y1;
+    }
+    var midX = x0 + ELBOW;
+    return "M " + x0 + " " + y0 + " L " + midX + " " + y0 + " L " + midX + " " + y1 + " L " + x1 + " " + y1;
+  }
+
+
+  function exportDiagramAsPng() {
+    var svg = root.querySelector("svg");
+    if (!svg) return;
+    var clone = svg.cloneNode(true);
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    var width = parseFloat(svg.getAttribute("width")) || 800;
+    var height = parseFloat(svg.getAttribute("height")) || 600;
+    var svgStr = new XMLSerializer().serializeToString(clone);
+    var svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+    var url = URL.createObjectURL(svgBlob);
+    var img = new Image();
+    img.onload = function () {
+      var scale = 2;
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      // Also hand the PNG to Python (base64, no "data:image/png;base64,"
+      // prefix) over the same channel every other canvas interaction
+      // uses, alongside the browser download above -- lets a Technical
+      // Documentation Report embed exactly the diagram the user is
+      // looking at when they click the camera button, without touching
+      // the existing "download to my computer" behaviour.
+      var pngDataUrl = canvas.toDataURL("image/png");
+      var commaIndex = pngDataUrl.indexOf(",");
+      setComponentValue({
+        type: "diagram_png",
+        data: commaIndex >= 0 ? pngDataUrl.slice(commaIndex + 1) : "",
+        nonce: Date.now(),
+      });
+      canvas.toBlob(function (blob) {
+        if (!blob) return;
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "markov-diagram.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+      }, "image/png");
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); };
+    img.src = url;
+  }
+
+  function render(freezeBounds) {
+    if (!freezeBounds) {
+      computeBounds();
+    }
+    root.innerHTML = "";
+
+    var scaledW = state.contentW * state.zoom;
+    var scaledH = state.contentH * state.zoom;
+    var svg = el("svg", {
+      width: scaledW,
+      height: scaledH,
+      viewBox: "0 0 " + state.contentW + " " + state.contentH
+    });
+
+    var GRID_SIZE = 24;
+    var defs = el("defs", {});
+    var gridPattern = el("pattern", {
+      id: "mc-grid-pattern",
+      width: GRID_SIZE,
+      height: GRID_SIZE,
+      patternUnits: "userSpaceOnUse"
+    });
+    gridPattern.appendChild(el("circle", { cx: 1.5, cy: 1.5, r: 1.5, fill: "#c3ccdb" }));
+    defs.appendChild(gridPattern);
+    svg.appendChild(defs);
+
+    var background = el("rect", {
+      x: 0, y: 0, width: state.contentW, height: state.contentH,
+      fill: "#f6f8fb"
+    });
+    svg.appendChild(background);
+    var gridRect = el("rect", {
+      x: 0, y: 0, width: state.contentW, height: state.contentH,
+      fill: "url(#mc-grid-pattern)"
+    });
+    svg.appendChild(gridRect);
+
+    var edgeLayer = el("g", { class: "mc-edges" });
+    var nodeLayer = el("g", { class: "mc-nodes" });
+    var labelLayer = el("g", { class: "mc-labels" });
+    svg.appendChild(edgeLayer);
+    svg.appendChild(nodeLayer);
+    svg.appendChild(labelLayer);
+
+    function centerOf(n) {
+      var shape = SHAPE[n.kind] || SHAPE.chance;
+      return { x: n.x + state.offsetX + shape.w / 2, y: n.y + state.offsetY + shape.h / 2, shape: shape };
+    }
+
+    state.edges.forEach(function (edge) {
+      var sourceNode = nodeById(edge.source);
+      var targetNode = nodeById(edge.target);
+      if (!sourceNode || !targetNode) return;
+      var sourceCenter = centerOf(sourceNode);
+      var targetCenter = centerOf(targetNode);
+      var sourcePoint = { x: sourceCenter.x + sourceCenter.shape.w / 2, y: sourceCenter.y };
+      var targetPoint = { x: targetCenter.x - targetCenter.shape.w / 2, y: targetCenter.y };
+      var path = el("path", {
+        d: edgePath(sourcePoint, targetPoint),
+        fill: "none",
+        stroke: edge.prob_error ? "#f97316" : "#8290a6",
+        "stroke-width": edge.prob_error ? "3" : "2"
+      });
+      edgeLayer.appendChild(path);
+
+      function addEdgeLabelBg(textEl, isError) {
+        // Measure after insertion so the background chip fits the text.
+        requestAnimationFrame(function () {
+          try {
+            var bbox = textEl.getBBox();
+            var bg = el("rect", {
+              x: bbox.x - 3,
+              y: bbox.y - 2,
+              width: bbox.width + 6,
+              height: bbox.height + 4,
+              class: isError ? "mc-edge-label-bg mc-edge-label-bg-error" : "mc-edge-label-bg",
+              rx: 3
+            });
+            labelLayer.insertBefore(bg, textEl);
+          } catch (err) { /* getBBox can throw before layout on some engines; ignore */ }
+        });
+      }
+
+      var hasExtraStateRows = edge.extra_state_rows && edge.extra_state_rows.length;
+      var hasExtraIncreRows = edge.extra_incre_rows && edge.extra_incre_rows.length;
+      if (edge.label || edge.prob_label || edge.cost_label || edge.effect_label || edge.increment_cost_label || edge.increment_effect_label || hasExtraStateRows || hasExtraIncreRows) {
+        // Anchor near the ELBOW/source corner of the branch (not the
+        // target end), matching the Decision Tree canvas's convention
+        // (see tree_canvas_component/frontend/index.html): the branch
+        // label sits right above the line at that corner, with
+        // probability (p=), cost ($=) and effect (E=) stacking as their
+        // own editable rows below it, in that order.
+        var labelAnchorX = sourcePoint.x + ELBOW + 6;
+        var lineY = targetPoint.y;
+        var ROW_STEP = 14;
+        var isStrategyNameEdge = edge.editable && edge.editable.type === "strategy_name";
+
+        if (isStrategyNameEdge) {
+          if (edge.label) {
+            var nameText = el("text", { x: labelAnchorX, y: lineY - 8, class: "mc-edge-label-text mc-edge-label-editable" });
+            nameText.textContent = edge.label;
+            styleText(nameText, "label", 400);
+            nameText.addEventListener("click", function (evt) {
+              evt.preventDefault();
+              evt.stopPropagation();
+              var editable = edge.editable;
+              var newName = window.prompt("Strategy name", editable.current != null ? editable.current : edge.label);
+              if (newName !== null && newName.trim()) {
+                setComponentValue({ type: "edit_node", id: edge.target, name: newName.trim(), nonce: Date.now() });
+              }
+            });
+            labelLayer.appendChild(nameText);
+            addEdgeLabelBg(nameText);
+          }
+          // A strategy-name edge (decision -> strategy root) never
+          // shows $/E or any outcome row, even when the root is a
+          // psm-kind node -- it picks which strategy this is, not a
+          // reward-bearing edge (the two branches are different strategies, so they carry no $ and E -- see
+          // _microsim_psm_role_canvas_rows() in app.py, only ever
+          // attached to a psm-kind STATE's own occupancy edge, never
+          // to this one).
+        } else {
+          // Branch label is edited with a single click (matching the
+          // Decision Tree canvas); probability/cost/effect keep the
+          // existing double-click-to-edit convention.
+          // Text may use the room between the elbow (where labels start) and the target node's
+          // left edge, so a long expression wraps there instead of running over the health state.
+          var maxLabelWidth = Math.max(80, targetPoint.x - labelAnchorX - 10);
+          var measureWidth = function (str, kind) {
+            var m = el("text", { x: -99999, y: -99999, opacity: "0", "pointer-events": "none", class: "mc-edge-label-text" });
+            styleText(m, kind, 400);
+            m.textContent = str;
+            if (!window.__decideMeasureSvg) {
+          // measure in an attached (off-screen) svg: elements inside the not-yet-attached label layer report 0 width
+          window.__decideMeasureSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          window.__decideMeasureSvg.setAttribute("style", "position:absolute;left:-99999px;top:0;width:10px;height:10px;overflow:hidden;pointer-events:none");
+          document.body.appendChild(window.__decideMeasureSvg);
+        }
+        window.__decideMeasureSvg.appendChild(m);
+            var w;
+            try { w = m.getComputedTextLength(); } catch (err) { w = str.length * 7; }
+            window.__decideMeasureSvg.removeChild(m);
+            return w;
+          };
+          var wrapLabelText = function (text, kind) {
+            var str = text == null ? "" : String(text);
+            if (measureWidth(str, kind) <= maxLabelWidth) return [str];
+            var tokens = str.match(/[^\s,+\-*\/()=<>]+[\s,+\-*\/()=<>]*|[\s,+\-*\/()=<>]+/g) || [str];
+            var lines = [];
+            var current = "";
+            var trimEnd = function (x) { return x.replace(/\s+$/, ""); };
+            tokens.forEach(function (tok) {
+              if (current && measureWidth(trimEnd(current + tok), kind) > maxLabelWidth) { lines.push(trimEnd(current)); current = tok; }
+              else { current += tok; }
+              // a single token wider than the box (e.g. a very long name with no spaces): cut it by width
+              while (current.length > 1 && measureWidth(trimEnd(current), kind) > maxLabelWidth) {
+                var lo = 1, hi = current.length - 1;
+                while (lo < hi) {
+                  var mid = Math.ceil((lo + hi) / 2);
+                  if (measureWidth(current.slice(0, mid), kind) <= maxLabelWidth) lo = mid; else hi = mid - 1;
+                }
+                lines.push(current.slice(0, lo));
+                current = current.slice(lo);
+              }
+            });
+            if (trimEnd(current)) lines.push(trimEnd(current));
+            return lines.length ? lines : [str];
+          };
+          var addEditableRow = function (text, editable, promptLabel, useDblClick, y, kind, isError) {
+            var lines = wrapLabelText(text, kind || "values");
+            var startY = kind === "label" ? y - (lines.length - 1) * ROW_STEP : y;
+            var row = el("text", { x: labelAnchorX, y: startY, class: "mc-edge-label-text mc-edge-label-editable" });
+            lines.forEach(function (line, i) {
+              var tspan = el("tspan", { x: labelAnchorX, dy: i === 0 ? 0 : ROW_STEP });
+              tspan.textContent = line;
+              row.appendChild(tspan);
+            });
+            styleText(row, kind || "values", 400);
+            if (isError) row.classList.add("mc-edge-label-text-error");
+            if (editable) {
+              row.addEventListener(useDblClick ? "dblclick" : "click", function (evt) {
+                evt.preventDefault();
+                evt.stopPropagation();
+                var newValue = window.prompt(promptLabel, editable.current != null ? editable.current : "");
+                if (newValue !== null && newValue.trim()) {
+                  setComponentValue({ type: "edit_transition", editable: editable, value: newValue.trim(), nonce: Date.now() });
+                }
+              });
+            }
+            labelLayer.appendChild(row);
+            addEdgeLabelBg(row, isError);
+            return lines.length;
+          };
+
+          var rowY = lineY + ROW_STEP;
+          if (edge.label) {
+            addEditableRow(edge.label, edge.label_editable, "Branch label", false, lineY - 8, "label");
+          }
+          if (edge.prob_label && edge.editable) {
+            rowY += ROW_STEP * addEditableRow(edge.prob_label, edge.editable, "Probability / parameter", true, rowY, "values", edge.prob_error);
+          }
+          if (edge.cost_label && edge.cost_editable) {
+            rowY += ROW_STEP * addEditableRow(edge.cost_label, edge.cost_editable, edge.cost_prompt || "Cost of state ($)", true, rowY, "values");
+          }
+          if (edge.effect_label && edge.effect_editable) {
+            rowY += ROW_STEP * addEditableRow(edge.effect_label, edge.effect_editable, edge.effect_prompt || "Effect of state (E)", true, rowY, "values");
+          }
+          if (edge.increment_cost_label && edge.increment_cost_editable) {
+            rowY += ROW_STEP * addEditableRow(edge.increment_cost_label, edge.increment_cost_editable, edge.increment_cost_prompt || "Incre_$ (transition cost)", true, rowY, "values");
+          }
+          if (edge.increment_effect_label && edge.increment_effect_editable) {
+            rowY += ROW_STEP * addEditableRow(edge.increment_effect_label, edge.increment_effect_editable, edge.increment_effect_prompt || "Incre_E (transition effect)", true, rowY, "values");
+          }
+          // Extra Outcomes-table rows beyond the primary Cost/Effect pair
+          // (e.g. "LY=" / "Incre_LY="), one row each -- same shape/click
+          // convention as the rows above, just a variable-length list
+          // instead of a single fixed field.
+          if (hasExtraStateRows) {
+            edge.extra_state_rows.forEach(function (row) {
+              if (!row.editable) return;
+              rowY += ROW_STEP * addEditableRow(row.text, row.editable, row.prompt || row.text, true, rowY, "values");
+            });
+          }
+          if (hasExtraIncreRows) {
+            edge.extra_incre_rows.forEach(function (row) {
+              if (!row.editable) return;
+              rowY += ROW_STEP * addEditableRow(row.text, row.editable, row.prompt || row.text, true, rowY, "values");
+            });
+          }
+        }
+      }
+    });
+
+    state.nodes.forEach(function (n) {
+      var center = centerOf(n);
+      var shape = center.shape;
+      var g = el("g", { class: "mc-node", "data-id": n.id });
+      if (n.kind === "root" && n.active === false) {
+        g.style.opacity = "0.55";
+      }
+      var shapeNode = shapePath(shape, center.x, center.y);
+      // n.id is always the full composite canvas id
+      // ("{strategy_id}::{raw_id}"), but state.selectedId (set from
+      // Python's markov_selected_id) is the RAW id, unprefixed -- see
+      // the "streamlit:render" handler below, which resolves the two
+      // into state.selectedCompositeId for exactly this kind of
+      // comparison (already used by copy/cut/paste). Comparing against
+      // state.selectedId directly here never matched anything, so
+      // neither this border color nor the new selection ring below
+      // were ever actually showing.
+      var isSelected = n.id === state.selectedCompositeId;
+      var shapeEl = el(shapeNode.tag, Object.assign({
+        fill: shape.fill,
+        stroke: isSelected ? "#1d4ed8" : (n.has_error ? "#f97316" : shape.stroke),
+        "stroke-width": isSelected ? "3.5" : (n.has_error ? "3" : "2")
+      }, shapeNode.attrs));
+      g.appendChild(shapeEl);
+      // Automatic state number (hidden unless "Show node numbers" is on): badge centred above the node.
+      if (n.show_num && n.num) {
+        var numStr = String(n.num);
+        var badgeW = 14 + numStr.length * 8;
+        var badgeY = center.y - shape.h / 2 - 22;
+        var badge = el("g", { class: "mc-num", "pointer-events": "none" });
+        badge.appendChild(el("rect", {
+          x: center.x - badgeW / 2, y: badgeY, width: badgeW, height: 18, rx: 9,
+          fill: "#fef3c7", stroke: "#d97706", "stroke-width": "1.25"
+        }));
+        var numText = el("text", {
+          x: center.x, y: badgeY + 13, "text-anchor": "middle", fill: "#92400e",
+          "font-size": "12", "font-weight": "700", "font-family": "inherit"
+        });
+        numText.textContent = numStr;
+        badge.appendChild(numText);
+        g.appendChild(badge);
+      }
+      if (isSelected) {
+        // Outer black selection ring, drawn around (never over) the
+        // node's own shape -- a distinct halo so it reads as "this
+        // node is selected" no matter the shape (circle/square/
+        // triangle) or its own fill/stroke color, separate from the
+        // has_error orange highlight and the shape's own selected-
+        // state stroke color below.
+        var selectionRingR = Math.max(shape.w, shape.h) / 2 + 6;
+        var selectionRing = el("circle", {
+          cx: center.x, cy: center.y, r: selectionRingR,
+          fill: "none",
+          stroke: "#000000",
+          "stroke-width": "2.5",
+          "pointer-events": "none"
+        });
+        g.appendChild(selectionRing);
+      }
+      if (n.kind === "root") {
+        var label = el("text", {
+          x: center.x, y: center.y + 5, "text-anchor": "middle",
+          fill: "#ffffff", "font-size": "15", "font-weight": "700",
+          "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        });
+        label.textContent = "M";
+        label.style.pointerEvents = "none";
+        g.appendChild(label);
+      }
+      if (n.kind === "psm") {
+        var psmLetter = el("text", {
+          x: center.x, y: center.y + 5, "text-anchor": "middle",
+          fill: "#000000", "font-size": "15", "font-weight": "700",
+          "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        });
+        psmLetter.textContent = "P";
+        psmLetter.style.pointerEvents = "none";
+        g.appendChild(psmLetter);
+      }
+      if (n.label) {
+        var nameLabel = el("text", {
+          x: center.x, y: center.y + shape.h / 2 + 16, "text-anchor": "middle",
+          class: "mc-node-name"
+        });
+        nameLabel.textContent = n.label;
+        styleText(nameLabel, "label", 600);
+        nameLabel.addEventListener("click", function (evt) {
+          evt.preventDefault();
+          evt.stopPropagation();
+          var newName = window.prompt("Name", n.label || n.id);
+          if (newName !== null && newName.trim()) {
+            setComponentValue({ type: "edit_node", id: n.id, name: newName.trim(), nonce: Date.now() });
+          }
+        });
+        g.appendChild(nameLabel);
+      }
+      if (n.kind === "root" && n.result_label) {
+        var resultLabel = el("text", {
+          x: center.x, y: center.y - shape.h / 2 - 14, "text-anchor": "middle",
+          class: "mc-node-result-label",
+          style: "font-variant-numeric: tabular-nums; pointer-events: none;"
+        });
+        resultLabel.textContent = n.result_label;
+        styleText(resultLabel, "values", 700);
+        g.appendChild(resultLabel);
+      }
+      if (n.cycle_label) {
+        // Not gated on n.kind === "root" -- unlike the Markov canvas's
+        // own strategy root (always kind "root"), a Microsim/ABM
+        // strategy root is switchable ("Change type": root/chance/psm
+        // -- see change_node_kind), and cycles is a document-wide
+        // setting that applies no matter what the root's own kind is
+        // (a PSM root still runs over the same number of cycles/
+        // horizon as everything else -- see
+        // _microsim_psm_curve_preview_points's own
+        // cycles/cycles_per_year -> horizon_years math). cycle_label/
+        // cycle_editable are only ever set on a strategy's root node
+        // (see microsim_canvas_payload()/markov_canvas_payload()), so
+        // this never fires for a regular state.
+        var cycleLabel = el("text", {
+          x: center.x, y: center.y + shape.h / 2 + 30, "text-anchor": "middle",
+          class: "mc-node-cycle-label"
+        });
+        cycleLabel.textContent = n.cycle_label;
+        if (n.cycle_editable) {
+          cycleLabel.addEventListener("click", function (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            var current = n.cycle_editable.current != null ? n.cycle_editable.current : "";
+            var newValue = window.prompt("Number of cycles", current);
+            if (newValue !== null && newValue.trim()) {
+              setComponentValue({ type: "edit_model_cycles", editable: n.cycle_editable, value: newValue.trim(), nonce: Date.now() });
+            }
+          });
+        }
+        g.appendChild(cycleLabel);
+      }
+      g.addEventListener("dblclick", function (evt) {
+        if (evt.target === g || evt.target === shapeEl) {
+          evt.preventDefault();
+          evt.stopPropagation();
+          if (n.kind === "root" || n.kind === "chance" || n.kind === "decision") {
+            setComponentValue({ type: "quick_branch", id: n.id, nonce: Date.now() });
+          } else if (n.kind === "psm") {
+            setComponentValue({ type: "add_node", parent_id: n.id, child_kind: "terminal", nonce: Date.now() });
+          }
+        }
+      });
+      g.addEventListener("mousedown", function (evt) {
+        if (evt.button !== 0) return;
+        evt.preventDefault();
+        root.focus();
+        closeMenu();
+        var ctm = svg.getScreenCTM();
+        var startX = (evt.clientX - ctm.e) / ctm.a;
+        var startY = (evt.clientY - ctm.f) / ctm.d;
+        drag = { id: n.id, dx: startX - center.x, dy: startY - center.y, moved: false };
+        g.classList.add("dragging");
+      });
+      g.addEventListener("contextmenu", function (evt) {
+        evt.preventDefault();
+        showNodeMenu(evt.clientX, evt.clientY, n.id);
+      });
+      nodeLayer.appendChild(g);
+    });
+
+    svg.addEventListener("mousedown", function (evt) {
+      root.focus();
+      if (evt.target === svg) closeMenu();
+    });
+    svg.addEventListener("contextmenu", function (evt) {
+      if (evt.target !== svg) return;
+      evt.preventDefault();
+      var ctm = svg.getScreenCTM();
+      var canvasX = (evt.clientX - ctm.e) / ctm.a - state.offsetX;
+      var canvasY = (evt.clientY - ctm.f) / ctm.d - state.offsetY;
+      showAddMenu(evt.clientX, evt.clientY, canvasX, canvasY);
+    });
+
+    root.appendChild(svg);
+    // Auto-grow the component (and with it the surrounding Streamlit page)
+    // to fit the full rendered SVG -- never cap it at a fixed viewport
+    // height with internal scroll, which would be exactly the
+    // canvas-internal camera this component is built to avoid (see the
+    // module docstring). state.viewportHeight (from the Python side) only
+    // sets a floor so a near-empty canvas doesn't collapse to almost
+    // nothing.
+    if (!freezeBounds) {
+      var frameHeight = Math.max(scaledH, Math.min(state.viewportHeight || 0, 160), 160);
+      root.style.height = frameHeight + "px";
+      if (state.hasRealData) {
+        clearTimeout(frameHeightFallbackTimer);
+        setFrameHeight(frameHeight);
+      } else {
+        clearTimeout(frameHeightFallbackTimer);
+        frameHeightFallbackTimer = setTimeout(function () {
+          if (!state.hasRealData) setFrameHeight(frameHeight);
+        }, 150);
+      }
+    }
+  }
+
+  function showAddMenu(clientX, clientY, canvasX, canvasY) {
+    closeMenu();
+    menuEl = document.createElement("div");
+    menuEl.className = "mc-menu";
+    menuEl.style.left = clientX + "px";
+    menuEl.style.top = clientY + "px";
+    var addBtn = document.createElement("button");
+    addBtn.textContent = "Add node here";
+    addBtn.onclick = function () {
+      // Empty canvas -> no specific parent node -- always lands as a
+      // new top-level health state (see add_node's Python handler).
+      showTypeMenu(clientX, clientY, null, canvasX, canvasY, true);
+    };
+    menuEl.appendChild(addBtn);
+    document.body.appendChild(menuEl);
+    clampMenuToViewport();
+  }
+
+  // Decision-node id and strategy-root-prefix literals, one pair per
+  // app that reuses this shared canvas component (Markov + Microsim
+  // today). Keep both entries in sync with MARKOV_DECISION_ID /
+  // _MARKOV_STRATEGY_ROOT_PREFIX and MICROSIM_DECISION_ID /
+  // _MICROSIM_STRATEGY_ROOT_PREFIX in app.py.
+  var KNOWN_DECISION_NODE_IDS = ["__markov_decision__", "__microsim_decision__"];
+  var KNOWN_STRATEGY_ROOT_PREFIXES = ["__markov_strategy_root__", "__microsim_strategy_root__"];
+
+  function isKnownDecisionId(id) {
+    return KNOWN_DECISION_NODE_IDS.indexOf(String(id)) !== -1;
+  }
+
+  function matchedStrategyRootPrefix(id) {
+    var str = String(id);
+    for (var i = 0; i < KNOWN_STRATEGY_ROOT_PREFIXES.length; i++) {
+      if (str.indexOf(KNOWN_STRATEGY_ROOT_PREFIXES[i]) === 0) return KNOWN_STRATEGY_ROOT_PREFIXES[i];
+    }
+    return null;
+  }
+
+  function strategyIdOf(id) {
+    if (isKnownDecisionId(id)) return null;
+    var rootPrefix = matchedStrategyRootPrefix(id);
+    if (rootPrefix) {
+      return String(id).slice(rootPrefix.length);
+    }
+    var idx = String(id).indexOf("::");
+    return idx === -1 ? null : String(id).slice(0, idx);
+  }
+
+  function rawIdOf(id) {
+    var idx = String(id).indexOf("::");
+    return idx === -1 ? id : String(id).slice(idx + 2);
+  }
+
+  function showTerminalPicker(clientX, clientY, contextId, mode) {
+    // mode "add": contextId is the parent to branch off of --
+    // dispatches add_terminal_transition (just a new transition to an
+    // EXISTING state, no new state created).
+    // mode "change": contextId is the node being re-skinned --
+    // dispatches relabel_as_terminal (re-skins it as terminal and
+    // takes on the picked state's name).
+    closeMenu();
+    var stratId = strategyIdOf(contextId);
+    var candidates = (state.nodes || []).filter(function (n) {
+      return (
+        strategyIdOf(n.id) === stratId &&
+        n.is_health_state === true &&
+        n.kind !== "root" &&
+        n.kind !== "decision" &&
+        String(n.id).indexOf("::__leaf__") === -1 &&
+        n.id !== contextId
+      );
+    });
+    menuEl = document.createElement("div");
+    menuEl.className = "mc-menu";
+    menuEl.style.left = clientX + "px";
+    menuEl.style.top = clientY + "px";
+    if (candidates.length === 0) {
+      var empty = document.createElement("div");
+      empty.style.padding = "8px 14px";
+      empty.style.color = "#64748b";
+      empty.style.fontSize = "13px";
+      empty.style.maxWidth = "220px";
+      empty.textContent = "No other health states yet -- add one first.";
+      menuEl.appendChild(empty);
+    } else {
+      candidates.forEach(function (n) {
+        var button = document.createElement("button");
+        button.textContent = n.label || n.id;
+        button.onclick = function () {
+          closeMenu();
+          var targetRawId = rawIdOf(n.id);
+          if (mode === "add") {
+            setComponentValue({
+              type: "add_terminal_transition",
+              parent_id: contextId,
+              target_raw_id: targetRawId,
+              nonce: Date.now()
+            });
+          } else {
+            setComponentValue({
+              type: "relabel_as_terminal",
+              id: contextId,
+              target_raw_id: targetRawId,
+              nonce: Date.now()
+            });
+          }
+        };
+        menuEl.appendChild(button);
+      });
+    }
+    document.body.appendChild(menuEl);
+    clampMenuToViewport();
+  }
+
+  function showTypeMenu(clientX, clientY, parentId, canvasX, canvasY, isHealthStateParent) {
+    closeMenu();
+    menuEl = document.createElement("div");
+    menuEl.className = "mc-menu";
+    menuEl.style.left = clientX + "px";
+    menuEl.style.top = clientY + "px";
+    var choices = [
+      { kind: "decision", label: "Decision node", color: "#2f6fd6", shape: "square" },
+      { kind: "chance", label: "Chance node", color: "#2ea66a", shape: "circle" },
+      { kind: "markov", label: "Markov node", color: "#7c3aed", shape: "circle" },
+      { kind: "terminal", label: "Terminal node", color: "#f97316", shape: "triangle" }
+    ];
+    if (state.isMicrosimCanvas) {
+      choices.splice(3, 0, { kind: "psm", label: "PSM node", color: "#bfdbfe", shape: "circle" });
+    }
+    choices.forEach(function (choice) {
+      var button = document.createElement("button");
+      button.style.display = "flex";
+      button.style.alignItems = "center";
+      button.style.gap = "8px";
+      var swatch = document.createElement("span");
+      swatch.style.display = "inline-block";
+      swatch.style.width = "16px";
+      swatch.style.height = "16px";
+      swatch.style.background = choice.color;
+      swatch.style.border = "2px solid rgba(15,23,42,0.35)";
+      swatch.style.borderRadius = choice.shape === "circle" ? "50%" : "3px";
+      if (choice.shape === "triangle") {
+        swatch.style.clipPath = "polygon(50% 0%, 100% 100%, 0% 100%)";
+        swatch.style.border = "none";
+      }
+      button.appendChild(swatch);
+      button.appendChild(document.createTextNode(choice.label));
+      button.onclick = function () {
+        if (choice.kind === "terminal") {
+          // A brand-new node directly under the strategy root (or
+          // dropped on empty canvas, which always lands top-level too)
+          // DEFINES a new health state, so it gets a fresh free-text
+          // name like Chance/Markov above -- never the existing-state
+          // picker, which is for a deeper node whose "terminal" is
+          // really just a transition into an ALREADY-existing state.
+          if (isHealthStateParent) {
+            closeMenu();
+            setComponentValue({
+              type: "add_node",
+              parent_id: parentId,
+              x: canvasX,
+              y: canvasY,
+              child_kind: "terminal",
+              nonce: Date.now()
+            });
+          } else {
+            showTerminalPicker(clientX, clientY, parentId, "add");
+          }
+          return;
+        }
+        closeMenu();
+        setComponentValue({
+           type: "add_node",
+          parent_id: parentId,
+          x: canvasX,
+          y: canvasY,
+          child_kind: choice.kind,
+          nonce: Date.now()
+        });
+      };
+      menuEl.appendChild(button);
+    });
+    document.body.appendChild(menuEl);
+    clampMenuToViewport();
+  }
+
+  var CHANGE_KIND_CHOICES = [
+    { kind: "decision", canvas_kind: "decision", label: "Decision node", color: "#2f6fd6", shape: "square" },
+    { kind: "markov", canvas_kind: "root", label: "Markov node", color: "#7c3aed", shape: "circle" },
+    { kind: "chance", canvas_kind: "chance", label: "Chance node", color: "#2ea66a", shape: "circle" },
+    { kind: "terminal", canvas_kind: "terminal", label: "Terminal node", color: "#f97316", shape: "triangle" }
+  ];
+
+  function showChangeKindMenu(clientX, clientY, id, choices, isHealthState) {
+    closeMenu();
+    menuEl = document.createElement("div");
+    menuEl.className = "mc-menu";
+    menuEl.style.left = clientX + "px";
+    menuEl.style.top = clientY + "px";
+    (choices || CHANGE_KIND_CHOICES).forEach(function (choice) {
+      var button = document.createElement("button");
+      button.style.display = "flex";
+      button.style.alignItems = "center";
+      button.style.gap = "8px";
+      var swatch = document.createElement("span");
+      swatch.style.display = "inline-block";
+      swatch.style.width = "16px";
+      swatch.style.height = "16px";
+      swatch.style.background = choice.color;
+      swatch.style.border = "2px solid rgba(15,23,42,0.35)";
+      swatch.style.borderRadius = choice.shape === "circle" ? "50%" : "3px";
+      if (choice.shape === "triangle") {
+        swatch.style.clipPath = "polygon(50% 0%, 100% 100%, 0% 100%)";
+        swatch.style.border = "none";
+      }
+      button.appendChild(swatch);
+      button.appendChild(document.createTextNode(choice.label));
+      button.onclick = function () {
+        if (choice.kind === "terminal") {
+          // A health state (this node's one real parent is the
+          // strategy root itself, not another state) DEFINES its own
+          // identity -- re-skinning it as terminal just changes its
+          // shape, so it keeps its own free-text name, exactly like
+          // switching it to Chance/Markov does. Only a deeper node
+          // (its real parent is another state) is really just a
+          // transition, so re-skinning IT as terminal means picking
+          // which already-existing state it now points to.
+          if (isHealthState) {
+            closeMenu();
+            setComponentValue({
+              type: "change_node_kind",
+              id: id,
+              canvas_kind: "terminal",
+              nonce: Date.now()
+            });
+          } else {
+            showTerminalPicker(clientX, clientY, id, "change");
+          }
+          return;
+        }
+        closeMenu();
+        setComponentValue({
+          type: "change_node_kind",
+          id: id,
+          canvas_kind: choice.canvas_kind,
+          nonce: Date.now()
+        });
+      };
+      menuEl.appendChild(button);
+    });
+    document.body.appendChild(menuEl);
+    clampMenuToViewport();
+  }
+
+  function showInsertMenu(clientX, clientY, id, canLeft, canRight) {
+    closeMenu();
+    menuEl = document.createElement("div");
+    menuEl.className = "mc-menu";
+    menuEl.style.left = clientX + "px";
+    menuEl.style.top = clientY + "px";
+    function addChoice(text, enabled, eventType) {
+      var button = document.createElement("button");
+      button.textContent = text;
+      if (!enabled) {
+        button.disabled = true;
+        button.style.opacity = "0.45";
+        button.style.cursor = "not-allowed";
+      } else {
+        button.onclick = function () {
+          closeMenu();
+          setComponentValue({ type: eventType, id: id, nonce: Date.now() });
+        };
+      }
+      menuEl.appendChild(button);
+    }
+    addChoice("To the left", canLeft, "insert_node_before");
+    addChoice("To the right", canRight, "insert_node_after");
+    document.body.appendChild(menuEl);
+    clampMenuToViewport();
+  }
+
+  function showNodeMenu(clientX, clientY, id) {
+    closeMenu();
+    var node = nodeById(id);
+    if (!node) return;
+    menuEl = document.createElement("div");
+    menuEl.className = "mc-menu";
+    menuEl.style.left = clientX + "px";
+    menuEl.style.top = clientY + "px";
+    function addButton(text, handler, disabled, danger) {
+      var button = document.createElement("button");
+      button.textContent = text;
+      if (danger) button.className = "danger";
+      if (disabled) {
+        button.disabled = true;
+        button.style.opacity = "0.45";
+        button.style.cursor = "not-allowed";
+      } else {
+        button.onclick = function () { closeMenu(); handler(); };
+      }
+      menuEl.appendChild(button);
+    }
+    var canAdd = node.kind === "decision" || node.kind === "root" || node.kind === "chance" || node.kind === "psm";
+    var isLeafNode = String(id).indexOf("::__leaf__") !== -1;
+    var isDecisionNode = isKnownDecisionId(id);
+    var rootPrefix = matchedStrategyRootPrefix(id);
+    var isSingletonNode = isDecisionNode || rootPrefix !== null;
+    // A Microsim strategy's own root/"M" node is the one strategy-root
+    // exception allowed to "Change type": a Microsim strategy may or may
+    // not need embedded Markov-cohort semantics at its root, unlike the
+    // Markov canvas's root, which always IS the whole Markov model and
+    // stays locked (same as the global Decision node). Insert/paste-
+    // adjacent structural actions stay locked for every strategy root
+    // either way -- still governed by isSingletonNode above.
+    var isMicrosimStrategyRoot = rootPrefix === "__microsim_strategy_root__";
+    var canChangeType = !isLeafNode && (!isSingletonNode || isMicrosimStrategyRoot);
+    var canInsertLeft = !isLeafNode && !isSingletonNode;
+    var canInsertRight = !isLeafNode && !isDecisionNode && canAdd;
+    if (node.kind === "decision") {
+      addButton("Add strategy", function () {
+        setComponentValue({ type: "add_node", parent_id: id, child_kind: "strategy", x: node.x, y: node.y, nonce: Date.now() });
+      }, false, false);
+    } else {
+      addButton("Add node", function () {
+        // A PSM node's children are always Terminal (its 3 fixed roles) --
+        // skip the Chance/Markov/Terminal/PSM type-choice menu entirely
+        // and fire add_node directly, same as psm_canvas_component's own
+        // "Add node" on a psm-kind node.
+        if (node.kind === "psm") {
+          setComponentValue({ type: "add_node", parent_id: id, child_kind: "terminal", nonce: Date.now() });
+        } else {
+          // Only the strategy root ("root") produces a new top-level
+          // health state here -- a "chance"/"markov" parent always
+          // nests the new child under it (canvas_parent set), so it's
+          // never top-level even if the clicked node itself is.
+          showTypeMenu(clientX, clientY, id, node.x, node.y, node.kind === "root");
+        }
+      }, !canAdd, false);
+    }
+    addButton("Change type", function () {
+      // The Microsim root can only become another Markov node (a no-op)
+      // or a plain Chance entry -- Decision/Terminal aren't meaningful
+      // choices for a strategy's single entry point.
+      var changeKindChoices = isMicrosimStrategyRoot
+        ? CHANGE_KIND_CHOICES.filter(function (choice) { return choice.kind === "markov" || choice.kind === "chance"; })
+        : CHANGE_KIND_CHOICES;
+      // PSM node conversion is Microsim-only,
+      // from a plain Chance node OR the strategy root ("M") -- a
+      // psm-kind root means the whole cohort starts directly in the
+      // PSM node, with its own PFS/OS curves/roles/initial_prob kept
+      // on the strategy dict itself (see render_microsim_root_psm_editor()
+      // and _microsim_merged_document() in app.py, which synthesizes it
+      // into a psm_nodes entry at Run time).
+      if (state.isMicrosimCanvas && (isMicrosimStrategyRoot || node.kind === "chance")) {
+        changeKindChoices = changeKindChoices.concat([
+          { kind: "psm", canvas_kind: "psm", label: "PSM node", color: "#bfdbfe", shape: "circle" }
+        ]);
+      }
+      showChangeKindMenu(clientX, clientY, id, changeKindChoices, node.is_health_state === true);
+    }, !canChangeType, false);
+    addButton("Insert node", function () {
+      showInsertMenu(clientX, clientY, id, canInsertLeft, canInsertRight);
+    }, !canInsertLeft && !canInsertRight, false);
+    addButton("Edit node", function () {
+      setComponentValue({ type: "select", id: id, nonce: Date.now() });
+    }, false, false);
+    addButton("Copy node", function () {
+      setComponentValue({ type: "copy_node", id: id, nonce: Date.now() });
+    }, false, false);
+    addButton("Cut node", function () {
+      setComponentValue({ type: "cut_node", id: id, nonce: Date.now() });
+    }, false, false);
+    addButton("Paste node", function () {
+      setComponentValue({ type: "paste_node", parent_id: id, nonce: Date.now() });
+    }, !canAdd, false);
+    addButton("Delete node", function () {
+      setComponentValue({ type: "delete_node", id: id, nonce: Date.now() });
+    }, isSingletonNode, true);
+    document.body.appendChild(menuEl);
+    clampMenuToViewport();
+  }
+
+  window.addEventListener("mousemove", function (evt) {
+    if (!drag) return;
+    var svg = root.querySelector("svg");
+    if (!svg) return;
+    var ctm = svg.getScreenCTM();
+    var x = (evt.clientX - ctm.e) / ctm.a - drag.dx;
+    var y = (evt.clientY - ctm.f) / ctm.d - drag.dy;
+    var n = nodeById(drag.id);
+    if (!n) return;
+    var shape = SHAPE[n.kind] || SHAPE.chance;
+    n.x = x - shape.w / 2 - state.offsetX;
+    n.y = y - shape.h / 2 - state.offsetY;
+    drag.moved = true;
+    render(true);
+  });
+
+  window.addEventListener("mouseup", function () {
+    if (!drag) return;
+    var id = drag.id;
+    var moved = drag.moved;
+    var n = nodeById(id);
+    drag = null;
+    if (!n) return;
+    if (moved) {
+      setComponentValue({ type: "move", id: id, x: n.x, y: n.y, nonce: Date.now() });
+    } else {
+      setComponentValue({ type: "select", id: id, nonce: Date.now() });
+    }
+  });
+
+  window.addEventListener("message", function (event) {
+    var msg = event.data;
+    if (!msg || msg.type !== "streamlit:render") return;
+    var args = msg.args || {};
+    state.nodes = (args.nodes || []).map(function (n) { return Object.assign({}, n); });
+    state.isMicrosimCanvas = state.nodes.some(function (n) { return n.id === "__microsim_decision__"; });
+    var firstNodeWithStyles = state.nodes.length ? state.nodes[0] : null;
+    state.hasTextStyles = !!(firstNodeWithStyles && firstNodeWithStyles.text_styles);
+    if (state.hasTextStyles) state.styles = firstNodeWithStyles.text_styles;
+    state.edges = args.edges || [];
+    state.zoom = args.zoom || 1;
+    state.viewportHeight = args.viewport_height || 720;
+    state.selectedId = args.selected_id || null;
+    state.selectedCompositeId = null;
+    if (state.selectedId) {
+      var suffix = "::" + state.selectedId;
+      var matches = state.nodes.filter(function (n) {
+        return n.id === state.selectedId || (typeof n.id === "string" && n.id.slice(-suffix.length) === suffix);
+      });
+      if (matches.length === 1) state.selectedCompositeId = matches[0].id;
+      else if (matches.length > 1) {
+        // same raw id in several strategies: prefer the composite id Python sends
+        var wanted = args.selected_composite_id;
+        var hit = wanted ? matches.filter(function (n) { return n.id === wanted; }) : [];
+        state.selectedCompositeId = (hit.length ? hit[0] : matches[0]).id;
+      }
+    }
+    var incomingResetNonce = args.reset_scroll_nonce;
+    var shouldResetScroll =
+      incomingResetNonce !== undefined && incomingResetNonce !== state.resetScrollNonce;
+    state.resetScrollNonce = incomingResetNonce;
+    state.hasRealData = true;
+    clearTimeout(frameHeightFallbackTimer);
+    render();
+    var incomingExportNonce = args.export_nonce || 0;
+    if (incomingExportNonce && incomingExportNonce !== state.lastExportNonce) {
+      state.lastExportNonce = incomingExportNonce;
+      exportDiagramAsPng();
+    }
+    // A full auto-arrange can move every node to a much more compact
+    // area than wherever the canvas was previously scrolled to -- reset
+    // back to the origin so the freshly recomputed layout is actually
+    // visible instead of showing empty space at the old scroll offset.
+    if (shouldResetScroll) {
+      root.scrollLeft = 0;
+      root.scrollTop = 0;
+    }
+  });
+
+  window.addEventListener("keydown", function (evt) {
+    var mod = evt.ctrlKey || evt.metaKey;
+    if (!mod || evt.shiftKey || evt.altKey) return;
+    var key = (evt.key || "").toLowerCase();
+    if (key === "z") {
+      evt.preventDefault();
+      setComponentValue({ type: "undo", nonce: Date.now() });
+    } else if (key === "c") {
+      if (!state.selectedCompositeId) return;
+      evt.preventDefault();
+      setComponentValue({ type: "copy_node", id: state.selectedCompositeId, nonce: Date.now() });
+    } else if (key === "x") {
+      if (!state.selectedCompositeId) return;
+      evt.preventDefault();
+      setComponentValue({ type: "cut_node", id: state.selectedCompositeId, nonce: Date.now() });
+    } else if (key === "v") {
+      var target = nodeById(state.selectedCompositeId);
+      if (!target || (target.kind !== "decision" && target.kind !== "root" && target.kind !== "chance")) return;
+      evt.preventDefault();
+      setComponentValue({ type: "paste_node", parent_id: state.selectedCompositeId, nonce: Date.now() });
+    }
+  });
+
+  streamlitReady();
+  // Render an empty canvas immediately so the iframe has a sane initial
+  // height before the first "streamlit:render" event arrives.
+  render();
+})();
+</script>
+</body>
+</html>

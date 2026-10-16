@@ -1,0 +1,537 @@
+{
+  "_comment": "Informative predictive distributions for tau^2: {scale: {'<outcome>|<comparison>': [mu, sigma, df or null]}} for log(tau^2). binary: Turner et al. 2015 Stat Med 34:984-998, Table IV (80 cells, log-normal, df null) plus the general distribution; checked for the additive outcome + comparison structure (tests/test_nma_priors.py). continuous: Rhodes et al. 2015 J Clin Epidemiol 68:52-60, Table 3 (8 outcome groups x 3 comparison columns, log-t with 5 df, medical areas other than cancer and respiratory diseases) plus the general distribution t(-3.44, 2.59^2, 5), transcribed from the paper PDF. The paper prints the Mental health / Nonpharmacologic location as 3.85; -2.85 is used (the printed median 0.058 = exp(-2.85) and that column is +0.14 above pharmacologic-vs-placebo in every other row). Cells not listed fall back to the general distribution.",
+  "binary": {
+    "General (all outcome and comparison types)|General (all outcome and comparison types)": [
+      -2.56,
+      1.74,
+      null
+    ],
+    "All-cause mortality|Pharmacological vs placebo / control": [
+      -3.95,
+      1.34,
+      null
+    ],
+    "All-cause mortality|Pharmacological vs pharmacological": [
+      -4.18,
+      1.41,
+      null
+    ],
+    "All-cause mortality|Non-pharmacological vs placebo / control": [
+      -4.17,
+      1.55,
+      null
+    ],
+    "All-cause mortality|Non-pharmacological vs pharmacological": [
+      -2.92,
+      1.02,
+      null
+    ],
+    "All-cause mortality|Non-pharmacological vs non-pharmacological": [
+      -3.5,
+      1.26,
+      null
+    ],
+    "Semi-objective: obstetric outcomes|Pharmacological vs placebo / control": [
+      -3.52,
+      1.74,
+      null
+    ],
+    "Semi-objective: obstetric outcomes|Pharmacological vs pharmacological": [
+      -3.75,
+      1.79,
+      null
+    ],
+    "Semi-objective: obstetric outcomes|Non-pharmacological vs placebo / control": [
+      -3.74,
+      1.91,
+      null
+    ],
+    "Semi-objective: obstetric outcomes|Non-pharmacological vs pharmacological": [
+      -2.49,
+      1.5,
+      null
+    ],
+    "Semi-objective: obstetric outcomes|Non-pharmacological vs non-pharmacological": [
+      -3.08,
+      1.68,
+      null
+    ],
+    "Semi-objective: cause-specific mortality / major morbidity event / composite|Pharmacological vs placebo / control": [
+      -3.71,
+      1.74,
+      null
+    ],
+    "Semi-objective: cause-specific mortality / major morbidity event / composite|Pharmacological vs pharmacological": [
+      -3.95,
+      1.79,
+      null
+    ],
+    "Semi-objective: cause-specific mortality / major morbidity event / composite|Non-pharmacological vs placebo / control": [
+      -3.93,
+      1.91,
+      null
+    ],
+    "Semi-objective: cause-specific mortality / major morbidity event / composite|Non-pharmacological vs pharmacological": [
+      -2.68,
+      1.51,
+      null
+    ],
+    "Semi-objective: cause-specific mortality / major morbidity event / composite|Non-pharmacological vs non-pharmacological": [
+      -3.27,
+      1.68,
+      null
+    ],
+    "Semi-objective: resource use / hospital stay / process|Pharmacological vs placebo / control": [
+      -2.34,
+      1.74,
+      null
+    ],
+    "Semi-objective: resource use / hospital stay / process|Pharmacological vs pharmacological": [
+      -2.58,
+      1.79,
+      null
+    ],
+    "Semi-objective: resource use / hospital stay / process|Non-pharmacological vs placebo / control": [
+      -2.56,
+      1.91,
+      null
+    ],
+    "Semi-objective: resource use / hospital stay / process|Non-pharmacological vs pharmacological": [
+      -1.31,
+      1.5,
+      null
+    ],
+    "Semi-objective: resource use / hospital stay / process|Non-pharmacological vs non-pharmacological": [
+      -1.9,
+      1.68,
+      null
+    ],
+    "Semi-objective: surgical / device-related success or failure|Pharmacological vs placebo / control": [
+      -2.14,
+      1.74,
+      null
+    ],
+    "Semi-objective: surgical / device-related success or failure|Pharmacological vs pharmacological": [
+      -2.37,
+      1.79,
+      null
+    ],
+    "Semi-objective: surgical / device-related success or failure|Non-pharmacological vs placebo / control": [
+      -2.36,
+      1.91,
+      null
+    ],
+    "Semi-objective: surgical / device-related success or failure|Non-pharmacological vs pharmacological": [
+      -1.11,
+      1.5,
+      null
+    ],
+    "Semi-objective: surgical / device-related success or failure|Non-pharmacological vs non-pharmacological": [
+      -1.69,
+      1.68,
+      null
+    ],
+    "Semi-objective: withdrawals / drop-outs|Pharmacological vs placebo / control": [
+      -2.99,
+      1.74,
+      null
+    ],
+    "Semi-objective: withdrawals / drop-outs|Pharmacological vs pharmacological": [
+      -3.23,
+      1.79,
+      null
+    ],
+    "Semi-objective: withdrawals / drop-outs|Non-pharmacological vs placebo / control": [
+      -3.21,
+      1.91,
+      null
+    ],
+    "Semi-objective: withdrawals / drop-outs|Non-pharmacological vs pharmacological": [
+      -1.96,
+      1.51,
+      null
+    ],
+    "Semi-objective: withdrawals / drop-outs|Non-pharmacological vs non-pharmacological": [
+      -2.55,
+      1.68,
+      null
+    ],
+    "Semi-objective: internal / external structure-related outcome|Pharmacological vs placebo / control": [
+      -2.71,
+      1.74,
+      null
+    ],
+    "Semi-objective: internal / external structure-related outcome|Pharmacological vs pharmacological": [
+      -2.94,
+      1.79,
+      null
+    ],
+    "Semi-objective: internal / external structure-related outcome|Non-pharmacological vs placebo / control": [
+      -2.93,
+      1.92,
+      null
+    ],
+    "Semi-objective: internal / external structure-related outcome|Non-pharmacological vs pharmacological": [
+      -1.67,
+      1.51,
+      null
+    ],
+    "Semi-objective: internal / external structure-related outcome|Non-pharmacological vs non-pharmacological": [
+      -2.26,
+      1.68,
+      null
+    ],
+    "Subjective: general physical health indicators|Pharmacological vs placebo / control": [
+      -2.29,
+      1.53,
+      null
+    ],
+    "Subjective: general physical health indicators|Pharmacological vs pharmacological": [
+      -2.53,
+      1.58,
+      null
+    ],
+    "Subjective: general physical health indicators|Non-pharmacological vs placebo / control": [
+      -2.51,
+      1.72,
+      null
+    ],
+    "Subjective: general physical health indicators|Non-pharmacological vs pharmacological": [
+      -1.26,
+      1.25,
+      null
+    ],
+    "Subjective: general physical health indicators|Non-pharmacological vs non-pharmacological": [
+      -1.85,
+      1.46,
+      null
+    ],
+    "Subjective: adverse events|Pharmacological vs placebo / control": [
+      -1.87,
+      1.52,
+      null
+    ],
+    "Subjective: adverse events|Pharmacological vs pharmacological": [
+      -2.1,
+      1.58,
+      null
+    ],
+    "Subjective: adverse events|Non-pharmacological vs placebo / control": [
+      -2.1,
+      1.71,
+      null
+    ],
+    "Subjective: adverse events|Non-pharmacological vs pharmacological": [
+      -0.84,
+      1.24,
+      null
+    ],
+    "Subjective: adverse events|Non-pharmacological vs non-pharmacological": [
+      -1.43,
+      1.45,
+      null
+    ],
+    "Subjective: infection / onset of new disease|Pharmacological vs placebo / control": [
+      -2.49,
+      1.52,
+      null
+    ],
+    "Subjective: infection / onset of new disease|Pharmacological vs pharmacological": [
+      -2.73,
+      1.58,
+      null
+    ],
+    "Subjective: infection / onset of new disease|Non-pharmacological vs placebo / control": [
+      -2.71,
+      1.71,
+      null
+    ],
+    "Subjective: infection / onset of new disease|Non-pharmacological vs pharmacological": [
+      -1.46,
+      1.24,
+      null
+    ],
+    "Subjective: infection / onset of new disease|Non-pharmacological vs non-pharmacological": [
+      -2.05,
+      1.45,
+      null
+    ],
+    "Subjective: signs / symptoms reflecting continuation or end of condition|Pharmacological vs placebo / control": [
+      -2.06,
+      1.51,
+      null
+    ],
+    "Subjective: signs / symptoms reflecting continuation or end of condition|Pharmacological vs pharmacological": [
+      -2.29,
+      1.58,
+      null
+    ],
+    "Subjective: signs / symptoms reflecting continuation or end of condition|Non-pharmacological vs placebo / control": [
+      -2.28,
+      1.71,
+      null
+    ],
+    "Subjective: signs / symptoms reflecting continuation or end of condition|Non-pharmacological vs pharmacological": [
+      -1.03,
+      1.24,
+      null
+    ],
+    "Subjective: signs / symptoms reflecting continuation or end of condition|Non-pharmacological vs non-pharmacological": [
+      -1.61,
+      1.45,
+      null
+    ],
+    "Subjective: pain|Pharmacological vs placebo / control": [
+      -1.83,
+      1.52,
+      null
+    ],
+    "Subjective: pain|Pharmacological vs pharmacological": [
+      -2.06,
+      1.58,
+      null
+    ],
+    "Subjective: pain|Non-pharmacological vs placebo / control": [
+      -2.05,
+      1.71,
+      null
+    ],
+    "Subjective: pain|Non-pharmacological vs pharmacological": [
+      -0.8,
+      1.25,
+      null
+    ],
+    "Subjective: pain|Non-pharmacological vs non-pharmacological": [
+      -1.38,
+      1.45,
+      null
+    ],
+    "Subjective: quality of life / functioning|Pharmacological vs placebo / control": [
+      -2.54,
+      1.54,
+      null
+    ],
+    "Subjective: quality of life / functioning|Pharmacological vs pharmacological": [
+      -2.78,
+      1.6,
+      null
+    ],
+    "Subjective: quality of life / functioning|Non-pharmacological vs placebo / control": [
+      -2.77,
+      1.73,
+      null
+    ],
+    "Subjective: quality of life / functioning|Non-pharmacological vs pharmacological": [
+      -1.51,
+      1.27,
+      null
+    ],
+    "Subjective: quality of life / functioning|Non-pharmacological vs non-pharmacological": [
+      -2.1,
+      1.47,
+      null
+    ],
+    "Subjective: mental health indicators|Pharmacological vs placebo / control": [
+      -2.12,
+      1.53,
+      null
+    ],
+    "Subjective: mental health indicators|Pharmacological vs pharmacological": [
+      -2.35,
+      1.6,
+      null
+    ],
+    "Subjective: mental health indicators|Non-pharmacological vs placebo / control": [
+      -2.34,
+      1.72,
+      null
+    ],
+    "Subjective: mental health indicators|Non-pharmacological vs pharmacological": [
+      -1.09,
+      1.27,
+      null
+    ],
+    "Subjective: mental health indicators|Non-pharmacological vs non-pharmacological": [
+      -1.67,
+      1.47,
+      null
+    ],
+    "Subjective: biological markers|Pharmacological vs placebo / control": [
+      -1.77,
+      1.52,
+      null
+    ],
+    "Subjective: biological markers|Pharmacological vs pharmacological": [
+      -2.0,
+      1.58,
+      null
+    ],
+    "Subjective: biological markers|Non-pharmacological vs placebo / control": [
+      -1.99,
+      1.71,
+      null
+    ],
+    "Subjective: biological markers|Non-pharmacological vs pharmacological": [
+      -0.74,
+      1.24,
+      null
+    ],
+    "Subjective: biological markers|Non-pharmacological vs non-pharmacological": [
+      -1.33,
+      1.45,
+      null
+    ],
+    "Subjective: various subjectively measured outcomes|Pharmacological vs placebo / control": [
+      -2.7,
+      1.52,
+      null
+    ],
+    "Subjective: various subjectively measured outcomes|Pharmacological vs pharmacological": [
+      -2.93,
+      1.58,
+      null
+    ],
+    "Subjective: various subjectively measured outcomes|Non-pharmacological vs placebo / control": [
+      -2.92,
+      1.71,
+      null
+    ],
+    "Subjective: various subjectively measured outcomes|Non-pharmacological vs pharmacological": [
+      -1.67,
+      1.25,
+      null
+    ],
+    "Subjective: various subjectively measured outcomes|Non-pharmacological vs non-pharmacological": [
+      -2.26,
+      1.45,
+      null
+    ]
+  },
+  "continuous": {
+    "General (all outcome and comparison types)|General (all outcome and comparison types)": [
+      -3.44,
+      2.59,
+      5
+    ],
+    "Obstetric outcome|Pharmacologic vs placebo / control": [
+      -4.13,
+      2.34,
+      5
+    ],
+    "Obstetric outcome|Pharmacologic vs pharmacologic": [
+      -4.4,
+      2.31,
+      5
+    ],
+    "Obstetric outcome|Nonpharmacologic (any)": [
+      -3.99,
+      2.11,
+      5
+    ],
+    "Resource use and hospital stay / process|Pharmacologic vs placebo / control": [
+      -2.55,
+      2.73,
+      5
+    ],
+    "Resource use and hospital stay / process|Pharmacologic vs pharmacologic": [
+      -2.83,
+      2.7,
+      5
+    ],
+    "Resource use and hospital stay / process|Nonpharmacologic (any)": [
+      -2.41,
+      2.57,
+      5
+    ],
+    "Internal and external structure-related outcome|Pharmacologic vs placebo / control": [
+      -2.43,
+      2.5,
+      5
+    ],
+    "Internal and external structure-related outcome|Pharmacologic vs pharmacologic": [
+      -2.7,
+      2.46,
+      5
+    ],
+    "Internal and external structure-related outcome|Nonpharmacologic (any)": [
+      -2.29,
+      2.32,
+      5
+    ],
+    "General physical health, adverse event, pain and quality of life / functioning|Pharmacologic vs placebo / control": [
+      -3.16,
+      2.5,
+      5
+    ],
+    "General physical health, adverse event, pain and quality of life / functioning|Pharmacologic vs pharmacologic": [
+      -3.44,
+      2.44,
+      5
+    ],
+    "General physical health, adverse event, pain and quality of life / functioning|Nonpharmacologic (any)": [
+      -3.02,
+      2.27,
+      5
+    ],
+    "Signs / symptoms reflecting continuation or end of condition and infection / onset of new acute / chronic disease|Pharmacologic vs placebo / control": [
+      -3.0,
+      2.5,
+      5
+    ],
+    "Signs / symptoms reflecting continuation or end of condition and infection / onset of new acute / chronic disease|Pharmacologic vs pharmacologic": [
+      -3.27,
+      2.47,
+      5
+    ],
+    "Signs / symptoms reflecting continuation or end of condition and infection / onset of new acute / chronic disease|Nonpharmacologic (any)": [
+      -2.86,
+      2.33,
+      5
+    ],
+    "Mental health outcome|Pharmacologic vs placebo / control": [
+      -2.99,
+      2.16,
+      5
+    ],
+    "Mental health outcome|Pharmacologic vs pharmacologic": [
+      -3.27,
+      2.14,
+      5
+    ],
+    "Mental health outcome|Nonpharmacologic (any)": [
+      -2.85,
+      1.93,
+      5
+    ],
+    "Biological marker|Pharmacologic vs placebo / control": [
+      -3.41,
+      2.83,
+      5
+    ],
+    "Biological marker|Pharmacologic vs pharmacologic": [
+      -3.68,
+      2.78,
+      5
+    ],
+    "Biological marker|Nonpharmacologic (any)": [
+      -3.27,
+      2.66,
+      5
+    ],
+    "Various subjectively measured outcomes|Pharmacologic vs placebo / control": [
+      -2.76,
+      2.58,
+      5
+    ],
+    "Various subjectively measured outcomes|Pharmacologic vs pharmacologic": [
+      -3.03,
+      2.59,
+      5
+    ],
+    "Various subjectively measured outcomes|Nonpharmacologic (any)": [
+      -2.62,
+      2.41,
+      5
+    ]
+  }
+}

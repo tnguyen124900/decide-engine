@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "DECIDE Engine: an open calculation engine for health economic models"
+type: software
+version: 0.1.0
+license: MIT
+authors:
+  - family-names: Nguyen
+    given-names: Trang
+repository-code: "https://github.com/tnguyen124900/decide-engine"

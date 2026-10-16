@@ -1,0 +1,1688 @@
+{
+  "id": "markov_model",
+  "name": "DARTH time-dependent Sick-Sicker (4-state, 75 annual cycles)",
+  "cycles": 75,
+  "half_cycle_correction": false,
+  "cycles_per_year": 1.0,
+  "discount_cost_value": 0.03,
+  "discount_cost_unit": "per year",
+  "discount_effect_value": 0.03,
+  "discount_effect_unit": "per year",
+  "parameters": [
+    {
+      "name": "rHS1",
+      "base": 0.15,
+      "_id": "11d1b39067b34b94bfb180799269ca17"
+    },
+    {
+      "name": "rS1H",
+      "base": 0.5,
+      "_id": "03fa1bc97a03490f9fd61a49f0356fce"
+    },
+    {
+      "name": "rS1S2",
+      "base": 0.105,
+      "_id": "a7647d6d76314c00874fc518507bab9a"
+    },
+    {
+      "name": "HR_S1D",
+      "base": 3.0,
+      "_id": "90fcfe5b6a2b4669a076620c266a4fea"
+    },
+    {
+      "name": "HR_S2D",
+      "base": 10.0,
+      "_id": "f5670d5adcc844728a8d4e082411c832"
+    },
+    {
+      "name": "StartAge",
+      "base": 25.0,
+      "_id": "6fc65d73db7d406984d07b40ff1dcaf7"
+    },
+    {
+      "name": "cH",
+      "base": 2000.0,
+      "_id": "aff3af604a2f4c8190719940182565b8"
+    },
+    {
+      "name": "cS1",
+      "base": 4000.0,
+      "_id": "0042e342e3f94d37b66011672c28394b"
+    },
+    {
+      "name": "cS2",
+      "base": 15000.0,
+      "_id": "90c8df8057dc42619d62d353ce0d26cb"
+    },
+    {
+      "name": "cA",
+      "base": 12000.0,
+      "_id": "0ca45c773eae448a9fcaef2abe25b967"
+    },
+    {
+      "name": "cB",
+      "base": 13000.0,
+      "_id": "498563cf8c594be5bc50a2b7b6f4ca21"
+    },
+    {
+      "name": "cHS1",
+      "base": 1000.0,
+      "_id": "ef0835f951334a189de739501dd32f5e"
+    },
+    {
+      "name": "cEOL",
+      "base": 2000.0,
+      "_id": "6c9d68c17ccc4b7da970d2959a0536eb"
+    },
+    {
+      "name": "uH",
+      "base": 1.0,
+      "_id": "ab6c3634adde41149f2893e56fed9e6a"
+    },
+    {
+      "name": "uS1",
+      "base": 0.75,
+      "_id": "92469d576eb64bf9b31464ad3a4d477f"
+    },
+    {
+      "name": "uS1_A",
+      "base": 0.95,
+      "_id": "d50f15b69bc94025a990620dbadc959b"
+    },
+    {
+      "name": "uS2",
+      "base": 0.5,
+      "_id": "d5b855891dd74b67accd272f30a85d9c"
+    },
+    {
+      "name": "duHS1",
+      "base": -0.01,
+      "_id": "7480c7224da84aaaabda7117bd9a45e6"
+    },
+    {
+      "name": "HR_S1S2",
+      "base": 0.6,
+      "_id": "7babee2792e3439cac9ef32ba1688f12"
+    }
+  ],
+  "strategies": [
+    {
+      "id": "strategy_1",
+      "name": "SoC",
+      "states": [
+        {
+          "id": "chance",
+          "name": "Healthy",
+          "initial_prob": 1.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null,
+          "num": 1,
+          "entry_label": "Healthy",
+          "tenure_applied": false,
+          "cost": "cH*wSimpson",
+          "effect": "uH*wSimpson"
+        },
+        {
+          "id": "chance_2",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null,
+          "num": 2,
+          "entry_label": "Sick",
+          "tenure_applied": false,
+          "cost": "cS1*wSimpson",
+          "effect": "uS1*wSimpson",
+          "tenure_count": 76,
+          "initial_cost": "cS1*wSimpson",
+          "recurring_cost": "cS1*wSimpson",
+          "terminal_cost": "cS1*wSimpson"
+        },
+        {
+          "id": "chance_3",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": null,
+          "num": 3,
+          "entry_label": "Sicker",
+          "tenure_applied": false,
+          "cost": "cS2*wSimpson",
+          "effect": "uS2*wSimpson"
+        },
+        {
+          "id": "chance_4",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": true,
+          "canvas_kind": "terminal",
+          "canvas_parent": null,
+          "num": 4,
+          "entry_label": "Dead",
+          "tenure_applied": false,
+          "cost": 0.0,
+          "effect": 0.0
+        },
+        {
+          "id": "chance_5",
+          "name": "chance_5",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance",
+          "num": 5,
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_6",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance",
+          "num": 6,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_7",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5",
+          "num": 7,
+          "canvas_alias_of": "chance",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_8",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5",
+          "num": 8,
+          "canvas_alias_of": "chance_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_9",
+          "name": "chance_9",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_2",
+          "num": 9,
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_10",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_2",
+          "num": 10,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_11",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 11,
+          "canvas_alias_of": "chance",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_12",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 12,
+          "canvas_alias_of": "chance_3",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_13",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 13,
+          "canvas_alias_of": "chance_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_14",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_3",
+          "num": 22,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_15",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_3",
+          "num": 23,
+          "canvas_alias_of": "chance_3",
+          "tenure_applied": false
+        }
+      ],
+      "transitions": [
+        {
+          "from_state": "chance",
+          "to_state": "chance_5",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance",
+          "to_state": "chance_6",
+          "probability": "pHD",
+          "label": "Die",
+          "cost_increment": "cEOL*wSimpson",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5",
+          "to_state": "chance_7",
+          "probability": "#",
+          "label": "Healthy",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5",
+          "to_state": "chance_8",
+          "probability": "pHS1",
+          "label": "Sick",
+          "cost_increment": "cHS1*wSimpson",
+          "effect_increment": "duHS1*wSimpson"
+        },
+        {
+          "from_state": "chance_2",
+          "to_state": "chance_9",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_2",
+          "to_state": "chance_10",
+          "probability": "pS1D",
+          "label": "Die",
+          "cost_increment": "cEOL*wSimpson",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_11",
+          "probability": "pS1H",
+          "label": "Recovered",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_12",
+          "probability": "pS1S2",
+          "label": "Worse",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_13",
+          "probability": "#",
+          "label": "Unchanged",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_3",
+          "to_state": "chance_14",
+          "probability": "pS2D",
+          "label": "Die",
+          "cost_increment": "cEOL*wSimpson",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_3",
+          "to_state": "chance_15",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ],
+      "next_state_num": 25
+    },
+    {
+      "id": "strategy_2",
+      "name": "A only",
+      "states": [
+        {
+          "id": "chance_4",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": true,
+          "canvas_kind": "terminal",
+          "num": 4,
+          "entry_label": "Dead",
+          "tenure_applied": false,
+          "cost": 0.0,
+          "effect": 0.0
+        },
+        {
+          "id": "chance_5",
+          "name": "Healthy",
+          "initial_prob": 1.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "num": 9,
+          "entry_label": "Healthy",
+          "tenure_applied": false,
+          "cost": "cH*wSimpson",
+          "effect": "uH*wSimpson"
+        },
+        {
+          "id": "chance_5_2",
+          "name": "chance_5_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_5",
+          "num": 5,
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_6",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5",
+          "num": 6,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_7",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5_2",
+          "num": 7,
+          "canvas_alias_of": "chance_5",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_8",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5_2",
+          "num": 8,
+          "canvas_alias_of": "chance_2_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_2_2",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "num": 14,
+          "entry_label": "Sick",
+          "tenure_applied": false,
+          "cost": "(cS1+cA)*wSimpson",
+          "effect": "uS1_A*wSimpson",
+          "tenure_count": 76,
+          "initial_cost": "(cS1+cA)*wSimpson",
+          "recurring_cost": "(cS1+cA)*wSimpson",
+          "terminal_cost": "(cS1+cA)*wSimpson"
+        },
+        {
+          "id": "chance_9",
+          "name": "chance_9",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_2_2",
+          "num": 15,
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_10",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_2_2",
+          "num": 10,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_11",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 11,
+          "canvas_alias_of": "chance_5",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_12",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 12,
+          "canvas_alias_of": "chance_3_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_13",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 13,
+          "canvas_alias_of": "chance_2_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_3_2",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "num": 24,
+          "entry_label": "Sicker",
+          "tenure_applied": false,
+          "cost": "(cS2 + cA)*wSimpson",
+          "effect": "uS2*wSimpson"
+        },
+        {
+          "id": "chance_14",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_3_2",
+          "num": 22,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_15",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_3_2",
+          "num": 23,
+          "canvas_alias_of": "chance_3_2",
+          "tenure_applied": false
+        }
+      ],
+      "transitions": [
+        {
+          "from_state": "chance_5",
+          "to_state": "chance_5_2",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5",
+          "to_state": "chance_6",
+          "probability": "pHD",
+          "label": "Die",
+          "cost_increment": "cEOL*wSimpson",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5_2",
+          "to_state": "chance_7",
+          "probability": "#",
+          "label": "Healthy",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5_2",
+          "to_state": "chance_8",
+          "probability": "pHS1",
+          "label": "Sick",
+          "cost_increment": "cHS1*wSimpson",
+          "effect_increment": "duHS1*wSimpson"
+        },
+        {
+          "from_state": "chance_2_2",
+          "to_state": "chance_9",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_2_2",
+          "to_state": "chance_10",
+          "probability": "pS1D",
+          "label": "Die",
+          "cost_increment": "cEOL*wSimpson",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_11",
+          "probability": "pS1H",
+          "label": "Recovered",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_12",
+          "probability": "pS1S2",
+          "label": "Worse",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_13",
+          "probability": "#",
+          "label": "Unchanged",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_3_2",
+          "to_state": "chance_14",
+          "probability": "pS2D",
+          "label": "Die",
+          "cost_increment": "cEOL*wSimpson",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_3_2",
+          "to_state": "chance_15",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ],
+      "next_state_num": 25
+    },
+    {
+      "id": "strategy_3",
+      "name": "B only",
+      "states": [
+        {
+          "id": "chance_5",
+          "name": "Healthy",
+          "initial_prob": 1.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "num": 9,
+          "entry_label": "Healthy",
+          "tenure_applied": false,
+          "cost": "cH*wSimpson",
+          "effect": "uH*wSimpson"
+        },
+        {
+          "id": "chance_5_2",
+          "name": "chance_5_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_5",
+          "num": 5,
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_6",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5",
+          "num": 6,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_7",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5_2",
+          "num": 7,
+          "canvas_alias_of": "chance_5",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_8",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5_2",
+          "num": 8,
+          "canvas_alias_of": "chance_2_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_2_2",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "num": 14,
+          "entry_label": "Sick",
+          "tenure_applied": false,
+          "cost": "(cS1+cB)*wSimpson",
+          "effect": "uS1*wSimpson",
+          "tenure_count": 76,
+          "initial_cost": "(cS1+cB)*wSimpson",
+          "recurring_cost": "(cS1+cB)*wSimpson",
+          "terminal_cost": "(cS1+cB)*wSimpson"
+        },
+        {
+          "id": "chance_9",
+          "name": "chance_9",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_2_2",
+          "num": 15,
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_10",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_2_2",
+          "num": 10,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_11",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 11,
+          "canvas_alias_of": "chance_5",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_12",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 12,
+          "canvas_alias_of": "chance_3_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_13",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 13,
+          "canvas_alias_of": "chance_2_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_3_2",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "num": 24,
+          "entry_label": "Sicker",
+          "tenure_applied": false,
+          "cost": "(cS2 + cB)*wSimpson",
+          "effect": "uS2*wSimpson"
+        },
+        {
+          "id": "chance_14",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_3_2",
+          "num": 22,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_15",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_3_2",
+          "num": 23,
+          "canvas_alias_of": "chance_3_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_4",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": true,
+          "canvas_kind": "terminal",
+          "num": 4,
+          "entry_label": "Dead",
+          "tenure_applied": false,
+          "cost": 0.0,
+          "effect": 0.0
+        }
+      ],
+      "transitions": [
+        {
+          "from_state": "chance_5",
+          "to_state": "chance_5_2",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5",
+          "to_state": "chance_6",
+          "probability": "pHD",
+          "label": "Die",
+          "cost_increment": "cEOL*wSimpson",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5_2",
+          "to_state": "chance_7",
+          "probability": "#",
+          "label": "Healthy",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5_2",
+          "to_state": "chance_8",
+          "probability": "pHS1",
+          "label": "Sick",
+          "cost_increment": "cHS1*wSimpson",
+          "effect_increment": "duHS1*wSimpson"
+        },
+        {
+          "from_state": "chance_2_2",
+          "to_state": "chance_9",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_2_2",
+          "to_state": "chance_10",
+          "probability": "pS1D",
+          "label": "Die",
+          "cost_increment": "cEOL*wSimpson",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_11",
+          "probability": "pS1H",
+          "label": "Recovered",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_12",
+          "probability": "pS1S2_B",
+          "label": "Worse",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_13",
+          "probability": "#",
+          "label": "Unchanged",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_3_2",
+          "to_state": "chance_14",
+          "probability": "pS2D",
+          "label": "Die",
+          "cost_increment": "cEOL*wSimpson",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_3_2",
+          "to_state": "chance_15",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ],
+      "next_state_num": 25
+    },
+    {
+      "id": "strategy_4",
+      "name": "A and B",
+      "states": [
+        {
+          "id": "chance_5",
+          "name": "Healthy",
+          "initial_prob": 1.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "num": 9,
+          "entry_label": "Healthy",
+          "tenure_applied": false,
+          "cost": "cH*wSimpson",
+          "effect": "uH*wSimpson"
+        },
+        {
+          "id": "chance_5_2",
+          "name": "chance_5_2",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_5",
+          "num": 5,
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_6",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5",
+          "num": 6,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_7",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5_2",
+          "num": 7,
+          "canvas_alias_of": "chance_5",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_8",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_5_2",
+          "num": 8,
+          "canvas_alias_of": "chance_2_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_2_2",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "num": 14,
+          "entry_label": "Sick",
+          "tenure_applied": false,
+          "cost": "(cS1+ cA + cB)*wSimpson",
+          "effect": "uS1_A*wSimpson",
+          "tenure_count": 76,
+          "initial_cost": "(cS1+ cA + cB)*wSimpson",
+          "recurring_cost": "(cS1+ cA + cB)*wSimpson",
+          "terminal_cost": "(cS1+ cA + cB)*wSimpson"
+        },
+        {
+          "id": "chance_9",
+          "name": "chance_9",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "canvas_parent": "chance_2_2",
+          "num": 15,
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_10",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_2_2",
+          "num": 10,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_11",
+          "name": "Healthy",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 11,
+          "canvas_alias_of": "chance_5",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_12",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 12,
+          "canvas_alias_of": "chance_3_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_13",
+          "name": "Sick",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_9",
+          "num": 13,
+          "canvas_alias_of": "chance_2_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_3_2",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "chance",
+          "num": 24,
+          "entry_label": "Sicker",
+          "tenure_applied": false,
+          "cost": "(cS2  + cA + cB)*wSimpson",
+          "effect": "uS2*wSimpson"
+        },
+        {
+          "id": "chance_14",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_3_2",
+          "num": 22,
+          "canvas_alias_of": "chance_4",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_15",
+          "name": "Sicker",
+          "initial_prob": 0.0,
+          "is_absorbing": false,
+          "canvas_kind": "terminal",
+          "canvas_parent": "chance_3_2",
+          "num": 23,
+          "canvas_alias_of": "chance_3_2",
+          "tenure_applied": false
+        },
+        {
+          "id": "chance_4",
+          "name": "Dead",
+          "initial_prob": 0.0,
+          "is_absorbing": true,
+          "canvas_kind": "terminal",
+          "num": 4,
+          "entry_label": "Dead",
+          "tenure_applied": false,
+          "cost": 0.0,
+          "effect": 0.0
+        }
+      ],
+      "transitions": [
+        {
+          "from_state": "chance_5",
+          "to_state": "chance_5_2",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5",
+          "to_state": "chance_6",
+          "probability": "pHD",
+          "label": "Die",
+          "cost_increment": "cEOL",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5_2",
+          "to_state": "chance_7",
+          "probability": "#",
+          "label": "Healthy",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_5_2",
+          "to_state": "chance_8",
+          "probability": "pHS1",
+          "label": "Sick",
+          "cost_increment": "cHS1*wSimpson",
+          "effect_increment": "duHS1*wSimpson"
+        },
+        {
+          "from_state": "chance_2_2",
+          "to_state": "chance_9",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_2_2",
+          "to_state": "chance_10",
+          "probability": "pS1D",
+          "label": "Die",
+          "cost_increment": "cEOL",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_11",
+          "probability": "pS1H",
+          "label": "Recovered",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_12",
+          "probability": "pS1S2_B",
+          "label": "Worse",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_9",
+          "to_state": "chance_13",
+          "probability": "#",
+          "label": "Unchanged",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_3_2",
+          "to_state": "chance_14",
+          "probability": "pS2D",
+          "label": "Die",
+          "cost_increment": "cEOL*wSimpson",
+          "effect_increment": 0.0
+        },
+        {
+          "from_state": "chance_3_2",
+          "to_state": "chance_15",
+          "probability": "#",
+          "label": "Survive",
+          "cost_increment": 0.0,
+          "effect_increment": 0.0
+        }
+      ],
+      "next_state_num": 25
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "cost",
+      "type": "cost",
+      "label": "Cost",
+      "symbol": "$",
+      "decimals": 2
+    },
+    {
+      "id": "effect",
+      "type": "effect",
+      "label": "Effect",
+      "symbol": "QALY",
+      "decimals": 2
+    },
+    {
+      "id": "icer",
+      "type": "icer",
+      "label": "ICER",
+      "symbol": "$/QALY",
+      "decimals": 2
+    }
+  ],
+  "cost_symbol": "$",
+  "cost_decimals": 2,
+  "effect_symbol": "QALY",
+  "effect_decimals": 2,
+  "analysis": {
+    "type": "CEA",
+    "effect_objective": "maximize",
+    "baseline_strategy_id": null,
+    "willingness_to_pay": 50000.0
+  },
+  "variables": [
+    {
+      "name": "pHS1",
+      "definition": "RateToProb(rHS1, 1, 1)",
+      "_id": "45cfc4abcfad4a2e98be2b0de8e37721"
+    },
+    {
+      "name": "pS1H",
+      "definition": "RateToProb(rS1H, 1, 1)",
+      "_id": "a138a8faf8064f4faee793490d1d5330"
+    },
+    {
+      "name": "pS1S2",
+      "definition": "RateToProb(rS1S2, 1, 1)",
+      "_id": "180f65bf3d6340e5bb0024a4ee5f3c6e"
+    },
+    {
+      "name": "CurrentAge",
+      "definition": "StartAge + _cycle",
+      "_id": "511cd94257784c2bb59a738236b7d4ed"
+    },
+    {
+      "name": "pHD",
+      "definition": "ProbToProb(t_mortality[CurrentAge, 0, 1, \"exact\"], 1, 1)",
+      "_id": "58f19d20daba406c9af7f3c1026174f6"
+    },
+    {
+      "name": "pS1D",
+      "definition": "1 - (1 - t_mortality[CurrentAge, 0, 1, \"exact\"]) ** HR_S1D",
+      "_id": "d8956d696803432f9b48cca329b5b055"
+    },
+    {
+      "name": "pS2D",
+      "definition": "1 - (1 - t_mortality[CurrentAge, 0, 1, \"exact\"]) ** HR_S2D",
+      "_id": "fc3bd6a04e304fc7a0164dc9982b93da"
+    },
+    {
+      "name": "pS1S2_B",
+      "definition": "RateToProb(rS1S2 * HR_S1S2, 1, 1)",
+      "_id": "18d3f07a383a4385aa1cedaf373a1473"
+    },
+    {
+      "name": "wSimpson",
+      "definition": "if(_cycle < 1, 1/3, if(_cycle > 74, 1/3, if(_cycle - 2*floor(_cycle/2) > 0, 2/3, 4/3)))",
+      "_id": "f9393bb80ec04a0194df28afc0e71423"
+    }
+  ],
+  "distributions": [],
+  "tables": [
+    {
+      "name": "t_mortality",
+      "headers_not_included": false,
+      "file_name": "US_life_table_total_2015_qx_1.xlsx",
+      "data": [
+        {
+          "Age": 0,
+          "Mortality": 0.005894
+        },
+        {
+          "Age": 1,
+          "Mortality": 0.000403
+        },
+        {
+          "Age": 2,
+          "Mortality": 0.000252
+        },
+        {
+          "Age": 3,
+          "Mortality": 0.000193
+        },
+        {
+          "Age": 4,
+          "Mortality": 0.000145
+        },
+        {
+          "Age": 5,
+          "Mortality": 0.000143
+        },
+        {
+          "Age": 6,
+          "Mortality": 0.000128
+        },
+        {
+          "Age": 7,
+          "Mortality": 0.000116
+        },
+        {
+          "Age": 8,
+          "Mortality": 0.000104
+        },
+        {
+          "Age": 9,
+          "Mortality": 9.5e-05
+        },
+        {
+          "Age": 10,
+          "Mortality": 9.1e-05
+        },
+        {
+          "Age": 11,
+          "Mortality": 9.8e-05
+        },
+        {
+          "Age": 12,
+          "Mortality": 0.000125
+        },
+        {
+          "Age": 13,
+          "Mortality": 0.000174
+        },
+        {
+          "Age": 14,
+          "Mortality": 0.000241
+        },
+        {
+          "Age": 15,
+          "Mortality": 0.000314
+        },
+        {
+          "Age": 16,
+          "Mortality": 0.000388
+        },
+        {
+          "Age": 17,
+          "Mortality": 0.000473
+        },
+        {
+          "Age": 18,
+          "Mortality": 0.000566
+        },
+        {
+          "Age": 19,
+          "Mortality": 0.00066
+        },
+        {
+          "Age": 20,
+          "Mortality": 0.000757
+        },
+        {
+          "Age": 21,
+          "Mortality": 0.000846
+        },
+        {
+          "Age": 22,
+          "Mortality": 0.000914
+        },
+        {
+          "Age": 23,
+          "Mortality": 0.000958
+        },
+        {
+          "Age": 24,
+          "Mortality": 0.000984
+        },
+        {
+          "Age": 25,
+          "Mortality": 0.001004
+        },
+        {
+          "Age": 26,
+          "Mortality": 0.001028
+        },
+        {
+          "Age": 27,
+          "Mortality": 0.001056
+        },
+        {
+          "Age": 28,
+          "Mortality": 0.001094
+        },
+        {
+          "Age": 29,
+          "Mortality": 0.001138
+        },
+        {
+          "Age": 30,
+          "Mortality": 0.001185
+        },
+        {
+          "Age": 31,
+          "Mortality": 0.001232
+        },
+        {
+          "Age": 32,
+          "Mortality": 0.001277
+        },
+        {
+          "Age": 33,
+          "Mortality": 0.001318
+        },
+        {
+          "Age": 34,
+          "Mortality": 0.001359
+        },
+        {
+          "Age": 35,
+          "Mortality": 0.001408
+        },
+        {
+          "Age": 36,
+          "Mortality": 0.001468
+        },
+        {
+          "Age": 37,
+          "Mortality": 0.001535
+        },
+        {
+          "Age": 38,
+          "Mortality": 0.001608
+        },
+        {
+          "Age": 39,
+          "Mortality": 0.00169
+        },
+        {
+          "Age": 40,
+          "Mortality": 0.00179
+        },
+        {
+          "Age": 41,
+          "Mortality": 0.001909
+        },
+        {
+          "Age": 42,
+          "Mortality": 0.002043
+        },
+        {
+          "Age": 43,
+          "Mortality": 0.002191
+        },
+        {
+          "Age": 44,
+          "Mortality": 0.00236
+        },
+        {
+          "Age": 45,
+          "Mortality": 0.002541
+        },
+        {
+          "Age": 46,
+          "Mortality": 0.002752
+        },
+        {
+          "Age": 47,
+          "Mortality": 0.003018
+        },
+        {
+          "Age": 48,
+          "Mortality": 0.003346
+        },
+        {
+          "Age": 49,
+          "Mortality": 0.003717
+        },
+        {
+          "Age": 50,
+          "Mortality": 0.004098
+        },
+        {
+          "Age": 51,
+          "Mortality": 0.004481
+        },
+        {
+          "Age": 52,
+          "Mortality": 0.004885
+        },
+        {
+          "Age": 53,
+          "Mortality": 0.005319
+        },
+        {
+          "Age": 54,
+          "Mortality": 0.005781
+        },
+        {
+          "Age": 55,
+          "Mortality": 0.006271
+        },
+        {
+          "Age": 56,
+          "Mortality": 0.006775
+        },
+        {
+          "Age": 57,
+          "Mortality": 0.007291
+        },
+        {
+          "Age": 58,
+          "Mortality": 0.007824
+        },
+        {
+          "Age": 59,
+          "Mortality": 0.008383
+        },
+        {
+          "Age": 60,
+          "Mortality": 0.008991
+        },
+        {
+          "Age": 61,
+          "Mortality": 0.009652
+        },
+        {
+          "Age": 62,
+          "Mortality": 0.010353
+        },
+        {
+          "Age": 63,
+          "Mortality": 0.011081
+        },
+        {
+          "Age": 64,
+          "Mortality": 0.011838
+        },
+        {
+          "Age": 65,
+          "Mortality": 0.012634
+        },
+        {
+          "Age": 66,
+          "Mortality": 0.01351
+        },
+        {
+          "Age": 67,
+          "Mortality": 0.014504
+        },
+        {
+          "Age": 68,
+          "Mortality": 0.015664
+        },
+        {
+          "Age": 69,
+          "Mortality": 0.017059
+        },
+        {
+          "Age": 70,
+          "Mortality": 0.018766
+        },
+        {
+          "Age": 71,
+          "Mortality": 0.020689
+        },
+        {
+          "Age": 72,
+          "Mortality": 0.022709
+        },
+        {
+          "Age": 73,
+          "Mortality": 0.024795
+        },
+        {
+          "Age": 74,
+          "Mortality": 0.027078
+        },
+        {
+          "Age": 75,
+          "Mortality": 0.029614
+        },
+        {
+          "Age": 76,
+          "Mortality": 0.032507
+        },
+        {
+          "Age": 77,
+          "Mortality": 0.035786
+        },
+        {
+          "Age": 78,
+          "Mortality": 0.039616
+        },
+        {
+          "Age": 79,
+          "Mortality": 0.044017
+        },
+        {
+          "Age": 80,
+          "Mortality": 0.048899
+        },
+        {
+          "Age": 81,
+          "Mortality": 0.054283
+        },
+        {
+          "Age": 82,
+          "Mortality": 0.060367
+        },
+        {
+          "Age": 83,
+          "Mortality": 0.066954
+        },
+        {
+          "Age": 84,
+          "Mortality": 0.074533
+        },
+        {
+          "Age": 85,
+          "Mortality": 0.082695
+        },
+        {
+          "Age": 86,
+          "Mortality": 0.092575
+        },
+        {
+          "Age": 87,
+          "Mortality": 0.103427
+        },
+        {
+          "Age": 88,
+          "Mortality": 0.115296
+        },
+        {
+          "Age": 89,
+          "Mortality": 0.128216
+        },
+        {
+          "Age": 90,
+          "Mortality": 0.142211
+        },
+        {
+          "Age": 91,
+          "Mortality": 0.157287
+        },
+        {
+          "Age": 92,
+          "Mortality": 0.173433
+        },
+        {
+          "Age": 93,
+          "Mortality": 0.190616
+        },
+        {
+          "Age": 94,
+          "Mortality": 0.208781
+        },
+        {
+          "Age": 95,
+          "Mortality": 0.227849
+        },
+        {
+          "Age": 96,
+          "Mortality": 0.247715
+        },
+        {
+          "Age": 97,
+          "Mortality": 0.268255
+        },
+        {
+          "Age": 98,
+          "Mortality": 0.289322
+        },
+        {
+          "Age": 99,
+          "Mortality": 0.310753
+        },
+        {
+          "Age": 100,
+          "Mortality": 1.0
+        }
+      ],
+      "_id": "fa111462eb4b40a4b4b675e55a82906d",
+      "columns": [
+        "Age",
+        "Mortality"
+      ],
+      "loaded_headers_not_included": false,
+      "default_value_column": null
+    }
+  ],
+  "note": "Reproduces the time-dependent Sick-Sicker cohort model of the DARTH tutorial: Alarid-Escobar F, Enns E, Kuntz KM, Krijkamp EM, Jalal H, Hunink MGM, Pechlivanoglou P, et al. \"Time Dependency in Cohort State-Transition Models: A Tutorial\" (arXiv:2108.13552)."
+}

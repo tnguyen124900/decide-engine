@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  body { font-family: "Source Sans Pro", "Source Sans 3", system-ui, -apple-system, sans-serif; font-size: 14px; color: #0f172a; }
+  .wrap { border: 1px solid #dbe2ee; border-radius: 8px; overflow: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  thead th {
+    position: sticky; top: 0; z-index: 1;
+    text-align: left; font-weight: 600; padding: 8px 10px; white-space: nowrap;
+  }
+  tbody tr:nth-child(even) { background: #f5f8fe; }
+  tbody tr:nth-child(odd) { background: #ffffff; }
+  tbody td { border-top: 1px solid #e5eaf2; padding: 0; }
+  input {
+    box-sizing: border-box; width: 100%; min-width: 60px; border: 0; background: transparent;
+    font: inherit; color: inherit; padding: 8px 10px; outline: none;
+  }
+  input.num { text-align: right; }
+  input:focus { background: #eaf1fd; box-shadow: inset 0 0 0 2px #2f6fd6; }
+  input::placeholder { color: #94a3b8; }
+  td.del { width: 36px; text-align: center; }
+  button.del {
+    border: 0; background: transparent; color: #64748b; cursor: pointer;
+    width: 32px; height: 32px; border-radius: 6px; font-size: 16px; line-height: 1;
+  }
+  button.del:hover, button.del:focus-visible { background: #fee2e2; color: #b91c1c; outline: none; }
+  .foot { padding: 6px 0 2px 0; }
+  button.add {
+    border: 1px solid #c7d2e3; background: #ffffff; color: #1e3a8a; font: inherit; font-weight: 600;
+    border-radius: 6px; padding: 6px 12px; cursor: pointer;
+  }
+  button.add:hover, button.add:focus-visible { background: #eaf1fd; outline: none; }
+  .foot { display: flex; gap: 8px; align-items: center; }
+  button.hist {
+    border: 1px solid #c7d2e3; background: #ffffff; color: #334155; font: inherit;
+    border-radius: 6px; padding: 6px 10px; cursor: pointer;
+  }
+  button.hist:hover:not(:disabled), button.hist:focus-visible { background: #eaf1fd; outline: none; }
+  button.hist:disabled { color: #94a3b8; cursor: default; }
+  .paste { margin-top: 8px; border: 1px solid #c7d2e3; border-radius: 8px; padding: 8px; background: #f8fafc; }
+  .paste textarea { width: 100%; box-sizing: border-box; min-height: 90px; font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    border: 1px solid #c7d2e3; border-radius: 6px; padding: 6px; }
+  .paste .row { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+  .paste .hint { color: #475569; font-size: 12.5px; }
+  .paste .warn { color: #b45309; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+(function () {
+  "use strict";
+
+  function send(type, data) {
+    window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, data || {}), "*");
+  }
+  function setFrameHeight() {
+    send("streamlit:setFrameHeight", { height: document.body.scrollHeight + 4 });
+  }
+
+  var root = document.getElementById("root");
+  var state = { columns: [], rows: [], version: null, columnsKey: "", args: {}, history: [], future: [] };
+  var HISTORY_LIMIT = 100;
+
+  /* ---- Undo / redo -------------------------------------------------------
+     Every committed change (cell edit, add row, delete row) first pushes a
+     snapshot of the whole table. Cmd/Ctrl+Z undoes, Shift+Cmd/Ctrl+Z or
+     Ctrl+Y redoes. While a cell has uncommitted typing, Cmd/Ctrl+Z is left
+     to the browser's own text undo inside that cell. History is cleared
+     when Python sends a new baseline (version change: Open, CSV import...). */
+  function snapshot() { return JSON.parse(JSON.stringify(state.rows)); }
+  function record() {
+    state.history.push(snapshot());
+    if (state.history.length > HISTORY_LIMIT) state.history.shift();
+    state.future = [];
+  }
+  function focusedCell() {
+    var active = document.activeElement;
+    if (!active || active.tagName !== "INPUT") return null;
+    return { row: Number(active.dataset.row), col: Number(active.dataset.col) };
+  }
+  function undo() {
+    if (!state.history.length) return;
+    var focus = focusedCell();
+    state.future.push(snapshot());
+    state.rows = state.history.pop();
+    render(focus);
+    emit();
+  }
+  function redo() {
+    if (!state.future.length) return;
+    var focus = focusedCell();
+    state.history.push(snapshot());
+    state.rows = state.future.pop();
+    render(focus);
+    emit();
+  }
+
+  function emit() {
+    send("streamlit:setComponentValue", {
+      value: { version: state.version, rows: state.rows, nonce: Date.now() },
+      dataType: "json"
+    });
+  }
+
+  function parseValue(column, text) {
+    var trimmed = String(text).trim();
+    if (column.type !== "number") return trimmed;
+    if (trimmed === "") return null;
+    var number = Number(trimmed.replace(",", "."));
+    return isFinite(number) ? number : null;
+  }
+
+  function display(value) {
+    if (value === null || value === undefined) return "";
+    return String(value);
+  }
+
+  /* ---- Paste from Excel / Sheets ------------------------------------------
+     Excel puts tab-separated text on the clipboard (one line per row). Pasting
+     into a cell with multi-cell text fills from that cell to the right and
+     down, adding rows as needed - the same as a spreadsheet. The "Paste
+     table" panel takes a whole block (with or without a header row) and
+     replaces or appends; a header row is matched to column labels / keys. */
+  function parseBlock(text) {
+    var lines = String(text).replace(/\r\n?/g, "\n").split("\n");
+    while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+    var sep = lines.some(function (l) { return l.indexOf("\t") >= 0; }) ? "\t"
+            : lines.some(function (l) { return l.indexOf(";") >= 0; }) ? ";" : ",";
+    return lines.map(function (line) {
+      return line.split(sep).map(function (cell) { return cell.replace(/^"(.*)"$/, "$1").trim(); });
+    });
+  }
+  function isMultiCell(text) {
+    return /[\t\n\r]/.test(String(text).replace(/[\n\r]+$/, ""));
+  }
+  function normaliseHeader(text) {
+    return String(text).toLowerCase().replace(/[^a-z0-9]+/g, "");
+  }
+  var HEADER_ALIASES = {
+    study: ["study", "studyid", "trial", "id", "author", "nghiencuu"],
+    treatment: ["treatment", "treat", "trt", "arm", "intervention", "drug"],
+    versus: ["versus", "vs", "comparator", "control", "reference"],
+    events: ["events", "event", "r", "responders", "cases", "deaths"],
+    n: ["n", "total", "totaln", "patients", "sample", "samplesize"],
+    mean: ["mean", "y"], sd: ["sd", "stdev", "std"], exposure: ["exposure", "persontime", "e", "time"],
+    estimate: ["estimate", "est", "logeffect", "te", "y"], se: ["se", "sete", "stderr", "standarderror"],
+    effect: ["effect", "hr", "or", "rr", "md", "ratio"], lower: ["lower", "low", "ci_lower", "lcl", "lci", "cilow"],
+    upper: ["upper", "high", "ci_upper", "ucl", "uci", "cihigh"], baseline_se: ["baselinese", "sebase"],
+    source: ["source", "ref", "doi", "note"], year: ["year"], mean_age: ["meanage", "age"],
+    female_pct: ["femalepct", "female", "sex"], follow_up: ["followup", "fu", "months"],
+    rob: ["rob", "riskofbias", "bias"], indirectness: ["indirectness", "indirect"], notes: ["notes", "comment"],
+    name: ["name", "treatment"], aliases: ["aliases", "alias", "synonyms"], class: ["class", "group"], color: ["color", "colour"]
+  };
+  function matchHeader(cells) {
+    // Returns [column index per pasted column] or null when the row is not a header.
+    var used = {};
+    var map = cells.map(function (cell) {
+      var norm = normaliseHeader(cell);
+      if (!norm) return -1;
+      for (var i = 0; i < state.columns.length; i++) {
+        if (used[i]) continue;
+        var column = state.columns[i];
+        var names = [column.key, column.label].map(normaliseHeader).concat(HEADER_ALIASES[column.key] || []);
+        if (names.indexOf(norm) >= 0) { used[i] = true; return i; }
+      }
+      return -1;
+    });
+    var matched = map.filter(function (i) { return i >= 0; }).length;
+    var numeric = cells.filter(function (c) { return c !== "" && isFinite(Number(c.replace(",", "."))); }).length;
+    return (matched >= 2 || (matched >= 1 && numeric === 0 && cells.length <= 2)) ? map : null;
+  }
+  function pasteAt(text, row, col) {
+    var block = parseBlock(text);
+    if (!block.length) return;
+    record();
+    block.forEach(function (cells, r) {
+      var target = row + r;
+      while (state.rows.length <= target) state.rows.push({});
+      cells.forEach(function (cell, c) {
+        var column = state.columns[col + c];
+        if (column) state.rows[target][column.key] = parseValue(column, cell);
+      });
+    });
+    render({ row: row, col: col });
+    emit();
+  }
+  function pasteTable(text, mode) {
+    var block = parseBlock(text);
+    if (!block.length) return { error: "empty" };
+    var map = matchHeader(block[0]);
+    var body = map ? block.slice(1) : block;
+    if (!map) map = state.columns.map(function (_, i) { return i; });
+    var rows = body.filter(function (cells) { return cells.some(function (c) { return c !== ""; }); }).map(function (cells) {
+      var fresh = {};
+      cells.forEach(function (cell, c) {
+        var column = state.columns[map[c]];
+        if (column) fresh[column.key] = parseValue(column, cell);
+      });
+      return fresh;
+    });
+    record();
+    state.rows = mode === "append" ? state.rows.concat(rows) : rows;
+    render();
+    emit();
+    return { rows: rows.length, header: !!matchHeader(block[0]) };
+  }
+
+  function render(focus) {
+    var args = state.args;
+    root.innerHTML = "";
+    var wrap = document.createElement("div");
+    wrap.className = "wrap";
+    wrap.style.maxHeight = (args.max_height || 420) + "px";
+    var table = document.createElement("table");
+    var thead = document.createElement("thead");
+    var headRow = document.createElement("tr");
+    state.columns.forEach(function (column) {
+      var th = document.createElement("th");
+      th.textContent = column.label;
+      th.style.background = args.header_bg || "#1e3a8a";
+      th.style.color = args.header_fg || "#ffffff";
+      if (column.type === "number") th.style.textAlign = "right";
+      if (column.width) th.style.width = column.width + "px";
+      headRow.appendChild(th);
+    });
+    var thDel = document.createElement("th");
+    thDel.style.background = args.header_bg || "#1e3a8a";
+    thDel.style.width = "36px";
+    headRow.appendChild(thDel);
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    var tbody = document.createElement("tbody");
+    state.rows.forEach(function (row, rowIndex) {
+      var tr = document.createElement("tr");
+      state.columns.forEach(function (column, columnIndex) {
+        var td = document.createElement("td");
+        var input = document.createElement("input");
+        input.type = "text";
+        input.inputMode = column.type === "number" ? "decimal" : "text";
+        if (column.type === "number") input.className = "num";
+        // Keep text readable (e.g. "Study 01"): the table scrolls sideways instead of squeezing columns.
+        input.style.minWidth = (column.width || (column.type === "number" ? 70 : 110)) + "px";
+        input.value = display(row[column.key]);
+        input.placeholder = column.placeholder || "";
+        input.setAttribute("aria-label", column.label + " (row " + (rowIndex + 1) + ")");
+        input.dataset.row = rowIndex;
+        input.dataset.col = columnIndex;
+        input.addEventListener("change", function () {
+          var value = parseValue(column, input.value);
+          var previous = state.rows[rowIndex][column.key];
+          if ((previous === undefined ? null : previous) === value) { input.value = display(value); return; }
+          record();
+          state.rows[rowIndex][column.key] = value;
+          input.value = display(value);
+          emit();
+        });
+        input.addEventListener("paste", function (evt) {
+          var text = (evt.clipboardData || window.clipboardData).getData("text");
+          if (!isMultiCell(text)) return; // single value: let the browser paste into the cell
+          evt.preventDefault();
+          pasteAt(text, rowIndex, columnIndex);
+        });
+        input.addEventListener("keydown", function (evt) {
+          if (evt.key === "Enter") {
+            evt.preventDefault();
+            input.blur();
+            var next = root.querySelector('input[data-row="' + (rowIndex + 1) + '"][data-col="' + columnIndex + '"]');
+            if (next) next.focus();
+          }
+        });
+        td.appendChild(input);
+        tr.appendChild(td);
+      });
+      var tdDel = document.createElement("td");
+      tdDel.className = "del";
+      var del = document.createElement("button");
+      del.className = "del";
+      del.type = "button";
+      del.textContent = "✕";
+      del.title = args.delete_label || "Delete row";
+      del.setAttribute("aria-label", (args.delete_label || "Delete row") + " " + (rowIndex + 1));
+      del.addEventListener("click", function () {
+        record();
+        state.rows.splice(rowIndex, 1);
+        render();
+        emit();
+      });
+      tdDel.appendChild(del);
+      tr.appendChild(tdDel);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    root.appendChild(wrap);
+
+    var foot = document.createElement("div");
+    foot.className = "foot";
+    var add = document.createElement("button");
+    add.className = "add";
+    add.type = "button";
+    add.textContent = args.add_label || "+ Add row";
+    add.addEventListener("click", function () {
+      record();
+      var last = state.rows.length ? state.rows[state.rows.length - 1] : {};
+      var fresh = {};
+      // Carry the study id forward: the next arm usually belongs to it.
+      if (state.columns.length && state.columns[0].key === "study" && last.study) fresh.study = last.study;
+      state.rows.push(fresh);
+      render({ row: state.rows.length - 1, col: fresh.study ? 1 : 0 });
+      wrap.scrollTop = wrap.scrollHeight;
+      emit();
+    });
+    foot.appendChild(add);
+    [["undo", args.undo_label || "\u21B6 Undo", state.history.length, undo],
+     ["redo", args.redo_label || "\u21B7 Redo", state.future.length, redo]].forEach(function (spec) {
+      var button = document.createElement("button");
+      button.className = "hist";
+      button.type = "button";
+      button.textContent = spec[1];
+      button.disabled = !spec[2];
+      button.addEventListener("click", spec[3]);
+      foot.appendChild(button);
+    });
+    var pasteButton = document.createElement("button");
+    pasteButton.className = "hist";
+    pasteButton.type = "button";
+    pasteButton.textContent = args.paste_label || "\u{1F4CB} Paste table";
+    pasteButton.addEventListener("click", function () { state.pasteOpen = !state.pasteOpen; render(); });
+    foot.appendChild(pasteButton);
+    root.appendChild(foot);
+
+    if (state.pasteOpen) {
+      var panel = document.createElement("div");
+      panel.className = "paste";
+      var hint = document.createElement("div");
+      hint.className = "hint";
+      hint.textContent = args.paste_hint || "Copy the cells in Excel / Google Sheets (with or without the header row), paste here, then Replace or Append. Columns: " + state.columns.map(function (c) { return c.label; }).join(", ") + ".";
+      panel.appendChild(hint);
+      var area = document.createElement("textarea");
+      area.placeholder = state.columns.map(function (c) { return c.label; }).join("\t");
+      area.value = state.pasteText || "";
+      area.addEventListener("input", function () { state.pasteText = area.value; });
+      panel.appendChild(area);
+      var actions = document.createElement("div");
+      actions.className = "row";
+      var status = document.createElement("span");
+      status.className = "warn";
+      [["replace", args.paste_replace || "Replace table", "add"], ["append", args.paste_append || "Append rows", "hist"]].forEach(function (spec) {
+        var button = document.createElement("button");
+        button.className = spec[2];
+        button.type = "button";
+        button.textContent = spec[1];
+        button.addEventListener("click", function () {
+          var result = pasteTable(area.value, spec[0]);
+          if (result.error) { status.textContent = args.paste_empty || "Nothing to paste."; return; }
+          state.pasteText = "";
+          state.pasteOpen = false;
+          render();
+        });
+        actions.appendChild(button);
+      });
+      var close = document.createElement("button");
+      close.className = "hist";
+      close.type = "button";
+      close.textContent = args.paste_close || "Close";
+      close.addEventListener("click", function () { state.pasteOpen = false; render(); });
+      actions.appendChild(close);
+      actions.appendChild(status);
+      panel.appendChild(actions);
+      root.appendChild(panel);
+      if (!focus) area.focus();
+    }
+
+    if (focus) {
+      var target = root.querySelector('input[data-row="' + focus.row + '"][data-col="' + focus.col + '"]');
+      if (target) target.focus();
+    }
+    setFrameHeight();
+  }
+
+  window.addEventListener("message", function (event) {
+    var msg = event.data;
+    if (!msg || msg.type !== "streamlit:render") return;
+    var args = msg.args || {};
+    state.args = args;
+    var columnsKey = JSON.stringify(args.columns || []);
+    var versionChanged = args.version !== state.version;
+    if (versionChanged) {
+      state.version = args.version;
+      state.history = [];
+      state.future = [];
+      state.rows = (args.rows || []).map(function (row) { return Object.assign({}, row); });
+    }
+    if (versionChanged || columnsKey !== state.columnsKey) {
+      state.columnsKey = columnsKey;
+      state.columns = args.columns || [];
+      render();
+    }
+  });
+
+  document.addEventListener("keydown", function (evt) {
+    var mod = evt.metaKey || evt.ctrlKey;
+    if (!mod || evt.altKey) return;
+    var key = (evt.key || "").toLowerCase();
+    var isUndo = key === "z" && !evt.shiftKey;
+    var isRedo = (key === "z" && evt.shiftKey) || (key === "y" && evt.ctrlKey && !evt.metaKey);
+    if (!isUndo && !isRedo) return;
+    var active = document.activeElement;
+    if (active && active.tagName === "INPUT") {
+      var cell = focusedCell();
+      var column = state.columns[cell.col];
+      var committed = display((state.rows[cell.row] || {})[column.key]);
+      if (active.value !== committed) return; // uncommitted typing: browser's own text undo
+    }
+    evt.preventDefault();
+    if (isUndo) undo(); else redo();
+  });
+
+  send("streamlit:componentReady", { apiVersion: 1 });
+})();
+</script>
+</body>
+</html>

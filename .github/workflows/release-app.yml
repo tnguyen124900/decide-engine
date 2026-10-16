@@ -1,0 +1,89 @@
+name: Release desktop app
+
+# Run manually: GitHub -> Actions -> "Release desktop app" -> Run workflow, and enter a
+# version such as 0.1.0. It builds the macOS (Apple silicon) and Windows apps from the
+# app/ folder and attaches them to a DRAFT release in this repository. Review the draft
+# under Releases, then click "Publish release".
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number, e.g. 0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  VERSION: ${{ inputs.version }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            name: mac-arm64
+          - os: windows-latest
+            name: windows
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r packaging/requirements-build.txt
+      - name: Build app
+        run: python packaging/build.py
+      - name: Check the bundle contains no unreleased material
+        run: python packaging/check_payload.py
+      - name: Package (macOS .dmg)
+        if: runner.os == 'macOS'
+        run: |
+          rm -rf dmgroot dist/tmp.dmg
+          mkdir dmgroot
+          cp -R dist/DECIDE.app dmgroot/
+          ln -s /Applications dmgroot/Applications
+          cp packaging/DECIDE.icns dmgroot/.VolumeIcon.icns
+          hdiutil create -volname "DECIDE" -srcfolder dmgroot -ov -format UDRW dist/tmp.dmg
+          hdiutil attach dist/tmp.dmg -mountpoint /Volumes/DECIDE -nobrowse
+          SetFile -a C /Volumes/DECIDE || true
+          hdiutil detach /Volumes/DECIDE
+          hdiutil convert dist/tmp.dmg -format UDZO -ov -o "dist/DECIDE-${VERSION}-mac-arm64.dmg"
+          rm -f dist/tmp.dmg
+      - name: Package (Windows .zip)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path "dist/DECIDE" -DestinationPath "dist/DECIDE-$env:VERSION-windows.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DECIDE-${{ matrix.name }}
+          path: |
+            app/dist/*.dmg
+            app/dist/*.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la artifacts
+          gh release create "v${VERSION}" artifacts/* \
+            --repo "${{ github.repository }}" \
+            --title "DECIDE ${VERSION}" \
+            --notes "DECIDE desktop app ${VERSION}. The app is not code-signed: see the README for first-launch steps." \
+            --draft

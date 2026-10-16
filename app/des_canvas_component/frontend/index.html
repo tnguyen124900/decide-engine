@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>DES canvas</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  #root { position: relative; width: 100%; height: 100%; overflow: auto; outline: none; }
+  svg { display: block; user-select: none; }
+  .tc-node { cursor: grab; }
+  .tc-node.dragging { cursor: grabbing; }
+  .tc-edge-label-bg { fill: #ffffff; fill-opacity: 0.92; }
+  .tc-edge-label-text { fill: #334155; font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .tc-edge-label-editable { cursor: text; }
+  .tc-edge-label-editable:hover { fill: #1d4ed8; }
+  .tc-node-sub { fill: #64748b; font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .tc-edge-info { fill: #800020; font: 11.5px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 600; }
+  .tc-node-name { fill: #172235; font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 600; cursor: text; }
+  .tc-menu {
+    position: absolute;
+    background: #ffffff;
+    border: 1px solid #d7dee8;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+    padding: 4px;
+    font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    z-index: 10;
+    min-width: 140px;
+  }
+  .tc-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #172235;
+  }
+  .tc-menu button:hover { background: #f1f5f9; }
+  .tc-menu button.danger { color: #b91c1c; }
+</style>
+</head>
+<body>
+<div id="root" tabindex="0"></div>
+<script>
+(function () {
+  "use strict";
+
+  /* ---- Minimal Streamlit Components v1 postMessage protocol ------------
+     Reimplemented directly (no streamlit-component-lib dependency) so this
+     component needs no npm/build step -- it is served as a single static
+     file straight from disk via components.v1.declare_component(path=...).
+     Mirrors markov_canvas_component/frontend/index.html exactly.
+  */
+  function sendToStreamlit(type, data) {
+    window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, data || {}), "*");
+  }
+  function streamlitReady() { sendToStreamlit("streamlit:componentReady", { apiVersion: 1 }); }
+  function setFrameHeight(height) { sendToStreamlit("streamlit:setFrameHeight", { height: height }); }
+  function setComponentValue(value) { sendToStreamlit("streamlit:setComponentValue", { value: value, dataType: "json" }); }
+
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    var node = document.createElementNS(NS, tag);
+    if (attrs) {
+      for (var key in attrs) {
+        if (Object.prototype.hasOwnProperty.call(attrs, key)) node.setAttribute(key, attrs[key]);
+      }
+    }
+    return node;
+  }
+
+  // Node shape geometry -- same sizes/colors the Decision Tree canvas has
+  // always used (and that the Markov canvas mirrors), so nothing changes
+  // visually, only how the camera behaves.
+  var SHAPE = {
+    decision: { w: 24, h: 24, fill: "#2f6fd6", stroke: "#1d4f9b", shape: "square" },
+    chance: { w: 26, h: 26, fill: "#2ea66a", stroke: "#176b45", shape: "circle" },
+    des: { w: 44, h: 44, fill: "#7c3aed", stroke: "#5b21b6", shape: "circle" },
+    time: { w: 36, h: 36, fill: "#800020", stroke: "#4a0012", shape: "circle" },
+    logic: { w: 30, h: 30, fill: "#0891b2", stroke: "#155e75", shape: "diamond" },
+    terminal: { w: 32, h: 28, fill: "#f97316", stroke: "#f97316", shape: "triangle" }
+  };
+  var PADDING = 40;
+  var ELBOW = 26;
+
+  var root = document.getElementById("root");
+  var state = {
+    nodes: [],
+    edges: [],
+    zoom: 1,
+    selectedId: null,
+    contentW: 400,
+    contentH: 300,
+    viewportHeight: 720,
+    resetScrollNonce: null,
+    hasRealData: false,
+    lastExportNonce: 0
+  };
+  var drag = null; // {id, dx, dy, moved}
+  var menuEl = null;
+  var frameHeightFallbackTimer = null;
+  // Set once the first real "streamlit:render" payload has been
+  // applied -- used to skip reporting the tiny placeholder height
+  // the very first, data-less render() produces (see below).
+
+  function closeMenu() {
+    if (menuEl && menuEl.parentNode) menuEl.parentNode.removeChild(menuEl);
+    menuEl = null;
+  }
+
+  // Keep a just-opened context menu fully inside the iframe's own
+  // viewport (html/body clip anything outside it), instead of letting
+  // it render off the bottom/right edge when opened near a boundary.
+  function clampMenuToViewport() {
+    if (!menuEl) return;
+    var rect = menuEl.getBoundingClientRect();
+    var margin = 4;
+    var maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+    var maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+    var left = parseFloat(menuEl.style.left) || 0;
+    var top = parseFloat(menuEl.style.top) || 0;
+    left = Math.min(Math.max(left, margin), maxLeft);
+    top = Math.min(Math.max(top, margin), maxTop);
+    menuEl.style.left = left + "px";
+    menuEl.style.top = top + "px";
+  }
+
+  function nodeById(id) {
+    for (var i = 0; i < state.nodes.length; i++) if (state.nodes[i].id === id) return state.nodes[i];
+    return null;
+  }
+
+  // Apply the user's canvas text settings (font, size, bold, italic,
+  // underline -- sent by Python inside every node as text_styles), ported
+  // from markov_canvas_component's own styleText(). A true no-op when
+  // state.hasTextStyles is false (before the user opens the format bar)
+  // -- no inline style is set at all, so the existing CSS defaults
+  // (tc-node-name / tc-edge-label-text / tc-edge-info / tc-node-sub) keep
+  // rendering exactly as before this feature existed.
+  var DEFAULT_TEXT_STYLE = { family: "", size: 12, bold: false, italic: false, underline: false };
+  function styleText(textEl, kind, baseWeight) {
+    if (!state.hasTextStyles) return;
+    var t = (state.styles && state.styles[kind]) || DEFAULT_TEXT_STYLE;
+    if (t.family) textEl.style.fontFamily = t.family;
+    textEl.style.fontSize = (t.size || DEFAULT_TEXT_STYLE.size) + "px";
+    textEl.style.fontWeight = t.bold ? "700" : String(baseWeight);
+    textEl.style.fontStyle = t.italic ? "italic" : "normal";
+    textEl.style.textDecoration = t.underline ? "underline" : "none";
+  }
+
+  function computeBounds() {
+    var minX = 0, minY = 0, maxX = 0, maxY = 0;
+    state.nodes.forEach(function (n) {
+      var shape = SHAPE[n.kind] || SHAPE.chance;
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y - (n.show_num && n.num ? 24 : 0)); // room for the number above the node
+      maxX = Math.max(maxX, n.x + shape.w + 60); // labels now hug the elbow, just a small margin needed
+      maxY = Math.max(maxY, n.y + shape.h + 76); // room for stacked name/p=/$=/E= rows below the line
+    });
+    // Extra slack beyond the tight content bounds so the canvas always
+    // has comfortable working room past the last node -- this is what
+    // makes the grid feel infinite instead of stopping right at the edge
+    // of whatever already exists.
+    var EXTRA_BUFFER_X = 320;
+    var EXTRA_BUFFER_Y = 260;
+    state.contentW = Math.max(400, maxX - minX + PADDING * 2 + EXTRA_BUFFER_X);
+    state.contentH = Math.max(160, maxY - minY + PADDING * 2 + EXTRA_BUFFER_Y);
+    state.offsetX = PADDING - minX;
+    state.offsetY = PADDING - minY;
+  }
+
+  function shapePath(shape, cx, cy) {
+    if (shape.shape === "circle") {
+      return { tag: "circle", attrs: { cx: cx, cy: cy, r: shape.w / 2 } };
+    }
+    if (shape.shape === "diamond") {
+      var pts = [cx, cy - shape.h / 2, cx + shape.w / 2, cy, cx, cy + shape.h / 2, cx - shape.w / 2, cy].join(",");
+      return { tag: "polygon", attrs: { points: pts } };
+    }
+    if (shape.shape === "square") {
+      return { tag: "rect", attrs: { x: cx - shape.w / 2, y: cy - shape.h / 2, width: shape.w, height: shape.h, rx: 3 } };
+    }
+    // upward triangle (terminal node)
+    var x0 = cx - shape.w / 2, x1 = cx + shape.w / 2;
+    var yTop = cy - shape.h / 2, yBot = cy + shape.h / 2;
+    var points = [cx, yTop, x1, yBot, x0, yBot].join(",");
+    return { tag: "polygon", attrs: { points: points } };
+  }
+
+  // Approximate advance width of one character of .tc-edge-info text
+  // (11.5px, semi-bold) -- measuring with getComputedTextLength() is not
+  // possible here because the SVG is not attached to the document yet.
+  var INFO_CHAR_WIDTH = 6.7;
+
+  function wrapFormula(text, maxWidth, charWidth) {
+    var maxChars = Math.max(12, Math.floor(maxWidth / charWidth));
+    if (text.length <= maxChars) return [text];
+    // Split into pieces that each end at a natural break point.
+    var pieces = [];
+    var current = "";
+    for (var i = 0; i < text.length; i++) {
+      current += text.charAt(i);
+      var ch = text.charAt(i);
+      var next = text.charAt(i + 1);
+      if (ch === "(" || (ch === "," && next === " ") || (ch === " " && text.charAt(i - 1) === ",")
+          || (ch === " " && text.charAt(i - 1) === "+")) {
+        pieces.push(current);
+        current = "";
+      }
+    }
+    if (current) pieces.push(current);
+    var lines = [];
+    var line = "";
+    var indent = "  "; // width budget only -- continuation lines are drawn indented (x offset)
+    pieces.forEach(function (piece) {
+      var limit = lines.length ? maxChars - indent.length : maxChars;
+      if (line && (line + piece).length > limit) {
+        lines.push(line);
+        line = piece.replace(/^\s+/, "");
+      } else {
+        line += piece;
+      }
+      // A single piece longer than the width: hard-split it.
+      while (line.length > (lines.length ? maxChars - indent.length : maxChars)) {
+        var cut = lines.length ? maxChars - indent.length : maxChars;
+        lines.push(line.slice(0, cut));
+        line = line.slice(cut);
+      }
+    });
+    if (line) lines.push(line);
+    return lines.map(function (l) { return l.replace(/\s+$/, ""); });
+  }
+
+  function edgePath(sourceCenter, targetCenter) {
+    var x0 = sourceCenter.x, y0 = sourceCenter.y;
+    var x1 = targetCenter.x, y1 = targetCenter.y;
+    if (Math.abs(y0 - y1) < 0.5) {
+      return "M " + x0 + " " + y0 + " L " + x1 + " " + y1;
+    }
+    var midX = x0 + ELBOW;
+    return "M " + x0 + " " + y0 + " L " + midX + " " + y0 + " L " + midX + " " + y1 + " L " + x1 + " " + y1;
+  }
+
+
+  function exportDiagramAsPng() {
+    var svg = root.querySelector("svg");
+    if (!svg) return;
+    var clone = svg.cloneNode(true);
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    var width = parseFloat(svg.getAttribute("width")) || 800;
+    var height = parseFloat(svg.getAttribute("height")) || 600;
+    var svgStr = new XMLSerializer().serializeToString(clone);
+    var svgBlob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+    var url = URL.createObjectURL(svgBlob);
+    var img = new Image();
+    img.onload = function () {
+      var scale = 2;
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(function (blob) {
+        if (!blob) return;
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "des-diagram.png";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+      }, "image/png");
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); };
+    img.src = url;
+  }
+
+  function render(freezeBounds) {
+    if (!freezeBounds) {
+      computeBounds();
+    }
+    root.innerHTML = "";
+
+    var scaledW = state.contentW * state.zoom;
+    var scaledH = state.contentH * state.zoom;
+    var svg = el("svg", {
+      width: scaledW,
+      height: scaledH,
+      viewBox: "0 0 " + state.contentW + " " + state.contentH
+    });
+
+    var GRID_SIZE = 24;
+    var defs = el("defs", {});
+    var gridPattern = el("pattern", {
+      id: "tc-grid-pattern",
+      width: GRID_SIZE,
+      height: GRID_SIZE,
+      patternUnits: "userSpaceOnUse"
+    });
+    gridPattern.appendChild(el("circle", { cx: 1.5, cy: 1.5, r: 1.5, fill: "#c3ccdb" }));
+    defs.appendChild(gridPattern);
+    svg.appendChild(defs);
+
+    var background = el("rect", {
+      x: 0, y: 0, width: state.contentW, height: state.contentH,
+      fill: "#f6f8fb"
+    });
+    svg.appendChild(background);
+    var gridRect = el("rect", {
+      x: 0, y: 0, width: state.contentW, height: state.contentH,
+      fill: "url(#tc-grid-pattern)"
+    });
+    svg.appendChild(gridRect);
+
+    var edgeLayer = el("g", { class: "tc-edges" });
+    var nodeLayer = el("g", { class: "tc-nodes" });
+    var labelLayer = el("g", { class: "tc-labels" });
+    svg.appendChild(edgeLayer);
+    svg.appendChild(nodeLayer);
+    svg.appendChild(labelLayer);
+
+    function centerOf(n) {
+      var shape = SHAPE[n.kind] || SHAPE.chance;
+      return { x: n.x + state.offsetX + shape.w / 2, y: n.y + state.offsetY + shape.h / 2, shape: shape };
+    }
+
+    state.edges.forEach(function (edge) {
+      var sourceNode = nodeById(edge.source);
+      var targetNode = nodeById(edge.target);
+      if (!sourceNode || !targetNode) return;
+      var sourceCenter = centerOf(sourceNode);
+      var targetCenter = centerOf(targetNode);
+      var sourcePoint = { x: sourceCenter.x + sourceCenter.shape.w / 2, y: sourceCenter.y };
+      var targetPoint = { x: targetCenter.x - targetCenter.shape.w / 2, y: targetCenter.y };
+      var path = el("path", {
+        d: edgePath(sourcePoint, targetPoint),
+        fill: "none",
+        stroke: "#8290a6",
+        "stroke-width": "2"
+      });
+      edgeLayer.appendChild(path);
+
+      function addEdgeLabelBg(textEl) {
+        requestAnimationFrame(function () {
+          try {
+            var bbox = textEl.getBBox();
+            var bg = el("rect", {
+              x: bbox.x - 3,
+              y: bbox.y - 2,
+              width: bbox.width + 6,
+              height: bbox.height + 4,
+              class: "tc-edge-label-bg",
+              rx: 3
+            });
+            labelLayer.insertBefore(bg, textEl);
+          } catch (err) { /* getBBox can throw before layout on some engines; ignore */ }
+        });
+      }
+
+      // Branch label (name) sits ABOVE the line, hugging the LEFT corner
+      // where the edge bends toward the child node. Probability (p=),
+      // cost reward ($=) and effect reward (E=) stack as their own rows
+      // BELOW the line, at that same left corner -- not sliding toward
+      // the target end for long edges like the old streamlit-flow-based
+      // canvas used to. Unlike a Markov state (whose edge label always
+      // just repeats the target's own name), a decision-tree branch
+      // label is independent of the child node's name/id, so it is
+      // always its own editable value here, not tied to renaming the
+      // child node.
+      var labelAnchorX = sourcePoint.x + ELBOW + 6;
+      var lineY = targetPoint.y; // the horizontal segment the label sits under (== sourcePoint.y for flat edges)
+      var ROW_STEP = 14;
+      var rowY = lineY + ROW_STEP; // first row below the line
+
+      function addEditableRow(text, field, promptLabel, currentValue, useDblClick, y, kind, baseWeight) {
+        var row = el("text", { x: labelAnchorX, y: y, class: "tc-edge-label-text tc-edge-label-editable" });
+        row.textContent = text;
+        styleText(row, kind || "values", baseWeight || 400);
+        if (edge.editable) {
+          row.addEventListener(useDblClick ? "dblclick" : "click", function (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            var newValue = window.prompt(promptLabel, currentValue != null ? currentValue : "");
+            if (newValue !== null && newValue.trim()) {
+              setComponentValue({
+                type: "edit_branch",
+                editable: Object.assign({}, edge.editable, { field: field }),
+                value: newValue.trim(),
+                nonce: Date.now()
+              });
+            }
+          });
+        }
+        labelLayer.appendChild(row);
+        addEdgeLabelBg(row);
+      }
+
+      if (edge.label) {
+        addEditableRow(edge.label, "label", "Branch label", edge.label, false, lineY - 8, "label", 400);
+      }
+      if (edge.prob_label && edge.editable) {
+        addEditableRow(edge.prob_label, "probability", "Probability", edge.prob_current, true, rowY, "values", 400);
+        rowY += ROW_STEP;
+      }
+      // A long time-to-event formula must not run under the child node
+      // (e.g. the Terminal triangle): wrap it onto extra lines that fit in
+      // the space between the label anchor and the child node, breaking
+      // after "(", ", " or " + " (continuation lines indented).
+      var infoMaxWidth = Math.max(90, targetPoint.x - labelAnchorX - 14);
+      (edge.info_rows || []).forEach(function (text) {
+        wrapFormula(text, infoMaxWidth, INFO_CHAR_WIDTH).forEach(function (line, lineIndex) {
+          var info = el("text", { x: labelAnchorX + (lineIndex ? 14 : 0), y: rowY, class: "tc-edge-info" });
+          info.textContent = line;
+          styleText(info, "values", 600);
+          info.addEventListener("click", function (evt) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            setComponentValue({ type: "select", id: edge.source, nonce: Date.now() });
+          });
+          labelLayer.appendChild(info);
+          addEdgeLabelBg(info);
+          rowY += ROW_STEP;
+        });
+      });
+      (edge.outcome_rows || []).forEach(function (row) {
+        if (!row.label || !edge.editable) return;
+        addEditableRow(row.label, row.field, row.prompt, row.value, true, rowY, "values", 400);
+        rowY += ROW_STEP;
+      });
+    });
+
+    state.nodes.forEach(function (n) {
+      var center = centerOf(n);
+      var shape = center.shape;
+      var g = el("g", { class: "tc-node", "data-id": n.id });
+      var shapeNode = shapePath(shape, center.x, center.y);
+      var shapeEl = el(shapeNode.tag, Object.assign({
+        fill: shape.fill,
+        stroke: n.id === state.selectedId ? "#1d4ed8" : shape.stroke,
+        "stroke-width": n.id === state.selectedId ? "3.5" : "2"
+      }, shapeNode.attrs));
+      g.appendChild(shapeEl);
+      // Automatic state number (hidden unless "Show node numbers" is on): badge centred above the node.
+      if (n.show_num && n.num) {
+        var numStr = String(n.num);
+        var badgeW = 14 + numStr.length * 8;
+        var badgeY = center.y - shape.h / 2 - 22;
+        var badge = el("g", { class: "tc-num", "pointer-events": "none" });
+        badge.appendChild(el("rect", {
+          x: center.x - badgeW / 2, y: badgeY, width: badgeW, height: 18, rx: 9,
+          fill: "#fef3c7", stroke: "#d97706", "stroke-width": "1.25"
+        }));
+        var numText = el("text", {
+          x: center.x, y: badgeY + 13, "text-anchor": "middle", fill: "#92400e",
+          "font-size": "12", "font-weight": "700", "font-family": "inherit"
+        });
+        numText.textContent = numStr;
+        badge.appendChild(numText);
+        g.appendChild(badge);
+      }
+      if (n.id === state.selectedId) {
+        // Outer black selection ring hugging the node (same as the Markov /
+        // Microsimulation canvas), so "selected" reads the same in every editor.
+        g.appendChild(el("circle", {
+          cx: center.x, cy: center.y, r: Math.max(shape.w, shape.h) / 2 + 6,
+          fill: "none", stroke: "#000000", "stroke-width": "2.5", "pointer-events": "none"
+        }));
+      }
+      if (n.kind === "des") {
+        var desText = el("text", {
+          x: center.x, y: center.y + 4, "text-anchor": "middle",
+          fill: "#ffffff", "font-size": "11.5", "font-weight": "700",
+          "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        });
+        desText.textContent = "DES";
+        desText.style.pointerEvents = "none";
+        g.appendChild(desText);
+      }
+      if (n.kind === "time") {
+        // Hourglass glyph (white, no clock hands) -- coordinates in the
+        // 36x36 node space centred on the node, per the approved design
+        //.
+        var hg = el("g", { transform: "translate(" + center.x + " " + center.y + ")" });
+        hg.style.pointerEvents = "none";
+        hg.appendChild(el("line", { x1: -7.5, y1: -10.5, x2: 7.5, y2: -10.5, stroke: "#ffffff", "stroke-width": 2, "stroke-linecap": "round" }));
+        hg.appendChild(el("line", { x1: -7.5, y1: 10.5, x2: 7.5, y2: 10.5, stroke: "#ffffff", "stroke-width": 2, "stroke-linecap": "round" }));
+        hg.appendChild(el("path", { d: "M-5.5 -10.5 Q-5.5 -3.5 -1.1 0 Q-5.5 3.5 -5.5 10.5 M5.5 -10.5 Q5.5 -3.5 1.1 0 Q5.5 3.5 5.5 10.5", fill: "none", stroke: "#ffffff", "stroke-width": 1.5, "stroke-linecap": "round" }));
+        hg.appendChild(el("path", { d: "M-3.6 -5 L3.6 -5 Q2.4 -2.4 0.5 -1 L-0.5 -1 Q-2.4 -2.4 -3.6 -5 Z", fill: "#ffffff" }));
+        hg.appendChild(el("line", { x1: 0, y1: -1, x2: 0, y2: 6.5, stroke: "#ffffff", "stroke-width": 0.9, "stroke-linecap": "round" }));
+        hg.appendChild(el("path", { d: "M-4.9 9.6 Q0 4.6 4.9 9.6 Z", fill: "#ffffff" }));
+        g.appendChild(hg);
+      }
+      // Node value rows (Time node: time rewards per year / startup; Terminal
+      // inside a DES: event rewards) -- one row per Cost/Effect outcome,
+      // extra outcomes from the Outcomes table included. Double-click edits.
+      (n.rows || []).forEach(function (row, rowIndex) {
+        var valueRow = el("text", {
+          x: center.x, y: center.y + shape.h / 2 + 16 + 13 * (rowIndex + 1), "text-anchor": "middle",
+          class: "tc-node-sub tc-edge-label-editable"
+        });
+        valueRow.textContent = row.label;
+        styleText(valueRow, "values", 400);
+        valueRow.addEventListener("dblclick", function (evt) {
+          evt.preventDefault();
+          evt.stopPropagation();
+          var newValue = window.prompt(row.prompt || "Value", row.value != null ? row.value : "");
+          if (newValue !== null && newValue.trim()) {
+            setComponentValue({ type: "edit_node_field", id: n.id, field: row.field, value: newValue.trim(), nonce: Date.now() });
+          }
+        });
+        valueRow.addEventListener("mousedown", function (evt) { evt.stopPropagation(); });
+        g.appendChild(valueRow);
+      });
+      if (n.sub_label) {
+        // e.g. a Terminal's "jump to" target, drawn right of the shape.
+        var subLabel = el("text", {
+          x: center.x + shape.w / 2 + 8, y: center.y + 4, "text-anchor": "start",
+          class: "tc-node-sub"
+        });
+        subLabel.textContent = n.sub_label;
+        subLabel.style.pointerEvents = "none";
+        g.appendChild(subLabel);
+      }
+      if (n.label) {
+        var nameLabel = el("text", {
+          x: center.x, y: center.y + shape.h / 2 + 16, "text-anchor": "middle",
+          class: "tc-node-name"
+        });
+        nameLabel.textContent = n.label;
+        styleText(nameLabel, "label", 600);
+        nameLabel.addEventListener("click", function (evt) {
+          evt.preventDefault();
+          evt.stopPropagation();
+          var newName = window.prompt("Node name", n.label || n.id);
+          if (newName !== null && newName.trim()) {
+            setComponentValue({ type: "edit_node", id: n.id, name: newName.trim(), nonce: Date.now() });
+          }
+        });
+        g.appendChild(nameLabel);
+      }
+      g.addEventListener("dblclick", function (evt) {
+        if (evt.target === g || evt.target === shapeEl) {
+          evt.preventDefault();
+          evt.stopPropagation();
+          if ((n.add_choices || []).length) {
+            setComponentValue({ type: "quick_branch", id: n.id, nonce: Date.now() });
+          }
+        }
+      });
+      g.addEventListener("mousedown", function (evt) {
+        if (evt.button !== 0) return;
+        evt.preventDefault();
+        root.focus();
+        closeMenu();
+        var ctm = svg.getScreenCTM();
+        var startX = (evt.clientX - ctm.e) / ctm.a;
+        var startY = (evt.clientY - ctm.f) / ctm.d;
+        drag = { id: n.id, dx: startX - center.x, dy: startY - center.y, moved: false };
+        g.classList.add("dragging");
+      });
+      g.addEventListener("contextmenu", function (evt) {
+        evt.preventDefault();
+        showNodeMenu(evt.clientX, evt.clientY, n.id);
+      });
+      nodeLayer.appendChild(g);
+    });
+
+    svg.addEventListener("mousedown", function (evt) {
+      root.focus();
+      if (evt.target === svg) closeMenu();
+    });
+
+    root.appendChild(svg);
+    // Auto-grow the component (and with it the surrounding Streamlit page)
+    // to fit the full rendered SVG -- never cap it at a fixed viewport
+    // height with internal scroll, which would be exactly the
+    // canvas-internal camera this component is built to avoid. state.viewportHeight
+    // (from the Python side) only sets a floor so a near-empty canvas
+    // doesn't collapse to almost nothing.
+    if (!freezeBounds) {
+      var frameHeight = Math.max(scaledH, Math.min(state.viewportHeight || 0, 160), 160);
+      root.style.height = frameHeight + "px";
+      if (state.hasRealData) {
+        clearTimeout(frameHeightFallbackTimer);
+        setFrameHeight(frameHeight);
+      } else {
+        clearTimeout(frameHeightFallbackTimer);
+        frameHeightFallbackTimer = setTimeout(function () {
+          if (!state.hasRealData) setFrameHeight(frameHeight);
+        }, 150);
+      }
+    }
+  }
+
+  var KIND_STYLE = {
+    decision: { label: "Decision node", color: "#2f6fd6", shape: "square" },
+    chance: { label: "Chance node", color: "#2ea66a", shape: "circle" },
+    des: { label: "DES node", color: "#7c3aed", shape: "circle" },
+    time: { label: "Time node", color: "#800020", shape: "circle" },
+    logic: { label: "Logic node", color: "#0891b2", shape: "diamond" },
+    terminal: { label: "Terminal node", color: "#f97316", shape: "triangle" }
+  };
+  function choicesFor(kinds) {
+    return (kinds || []).map(function (kind) {
+      var style = KIND_STYLE[kind] || KIND_STYLE.chance;
+      return { kind: kind, label: style.label, color: style.color, shape: style.shape };
+    });
+  }
+
+  function showTypeMenu(clientX, clientY, parentId) {
+    closeMenu();
+    menuEl = document.createElement("div");
+    menuEl.className = "tc-menu";
+    menuEl.style.left = clientX + "px";
+    menuEl.style.top = clientY + "px";
+    // Which kinds may be added depends on where the parent sits (inside
+    // or outside a DES model) -- computed on the Python side
+    // (des_canvas_payload) and sent as node.add_choices.
+    var parentNode = nodeById(parentId);
+    var choices = choicesFor(parentNode ? parentNode.add_choices : []);
+    choices.forEach(function (choice) {
+      var button = document.createElement("button");
+      button.style.display = "flex";
+      button.style.alignItems = "center";
+      button.style.gap = "8px";
+      var swatch = document.createElement("span");
+      swatch.style.display = "inline-block";
+      swatch.style.width = "16px";
+      swatch.style.height = "16px";
+      swatch.style.background = choice.color;
+      swatch.style.border = "2px solid rgba(15,23,42,0.35)";
+      swatch.style.borderRadius = choice.shape === "circle" ? "50%" : "3px";
+      if (choice.shape === "triangle") {
+        swatch.style.clipPath = "polygon(50% 0%, 100% 100%, 0% 100%)";
+        swatch.style.border = "none";
+      }
+      if (choice.shape === "diamond") {
+        swatch.style.clipPath = "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)";
+        swatch.style.border = "none";
+      }
+      button.appendChild(swatch);
+      button.appendChild(document.createTextNode(choice.label));
+      button.onclick = function () {
+        closeMenu();
+        setComponentValue({ type: "add_node", parent_id: parentId, child_kind: choice.kind, nonce: Date.now() });
+      };
+      menuEl.appendChild(button);
+    });
+    document.body.appendChild(menuEl);
+    clampMenuToViewport();
+  }
+
+  function showChangeKindMenu(clientX, clientY, id) {
+    closeMenu();
+    menuEl = document.createElement("div");
+    menuEl.className = "tc-menu";
+    menuEl.style.left = clientX + "px";
+    menuEl.style.top = clientY + "px";
+    var targetNode = nodeById(id);
+    choicesFor(targetNode ? targetNode.change_choices : []).forEach(function (choice) {
+      var button = document.createElement("button");
+      button.style.display = "flex";
+      button.style.alignItems = "center";
+      button.style.gap = "8px";
+      var swatch = document.createElement("span");
+      swatch.style.display = "inline-block";
+      swatch.style.width = "16px";
+      swatch.style.height = "16px";
+      swatch.style.background = choice.color;
+      swatch.style.border = "2px solid rgba(15,23,42,0.35)";
+      swatch.style.borderRadius = choice.shape === "circle" ? "50%" : "3px";
+      if (choice.shape === "triangle") {
+        swatch.style.clipPath = "polygon(50% 0%, 100% 100%, 0% 100%)";
+        swatch.style.border = "none";
+      }
+      if (choice.shape === "diamond") {
+        swatch.style.clipPath = "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)";
+        swatch.style.border = "none";
+      }
+      button.appendChild(swatch);
+      button.appendChild(document.createTextNode(choice.label));
+      button.onclick = function () {
+        closeMenu();
+        setComponentValue({ type: "change_node_kind", id: id, canvas_kind: choice.kind, nonce: Date.now() });
+      };
+      menuEl.appendChild(button);
+    });
+    document.body.appendChild(menuEl);
+    clampMenuToViewport();
+  }
+
+  function showInsertMenu(clientX, clientY, id, canLeft, canRight) {
+    closeMenu();
+    menuEl = document.createElement("div");
+    menuEl.className = "tc-menu";
+    menuEl.style.left = clientX + "px";
+    menuEl.style.top = clientY + "px";
+    function addChoice(text, enabled, eventType) {
+      var button = document.createElement("button");
+      button.textContent = text;
+      if (!enabled) {
+        button.disabled = true;
+        button.style.opacity = "0.45";
+        button.style.cursor = "not-allowed";
+      } else {
+        button.onclick = function () {
+          closeMenu();
+          setComponentValue({ type: eventType, id: id, nonce: Date.now() });
+        };
+      }
+      menuEl.appendChild(button);
+    }
+    addChoice("To the left", canLeft, "insert_node_before");
+    addChoice("To the right", canRight, "insert_node_after");
+    document.body.appendChild(menuEl);
+    clampMenuToViewport();
+  }
+
+  function showNodeMenu(clientX, clientY, id) {
+    closeMenu();
+    var node = nodeById(id);
+    if (!node) return;
+    menuEl = document.createElement("div");
+    menuEl.className = "tc-menu";
+    menuEl.style.left = clientX + "px";
+    menuEl.style.top = clientY + "px";
+    function addButton(text, handler, disabled, danger) {
+      var button = document.createElement("button");
+      button.textContent = text;
+      if (danger) button.className = "danger";
+      if (disabled) {
+        button.disabled = true;
+        button.style.opacity = "0.45";
+        button.style.cursor = "not-allowed";
+      } else {
+        button.onclick = function () { closeMenu(); handler(); };
+      }
+      menuEl.appendChild(button);
+    }
+    var isRoot = node.id === state.rootId;
+    var canAdd = (node.add_choices || []).length > 0;
+    var canChangeType = !isRoot && (node.change_choices || []).length > 0;
+    var canInsertLeft = !isRoot && !!node.can_insert;
+    var canInsertRight = canAdd && !!node.can_insert && node.kind !== "des";
+    addButton("Add node", function () {
+      // Only one legal child kind (e.g. a DES node inside a strategy
+      // whose only option is a Time node): skip the type-choice menu.
+      if ((node.add_choices || []).length === 1) {
+        setComponentValue({ type: "add_node", parent_id: id, child_kind: node.add_choices[0], nonce: Date.now() });
+      } else {
+        showTypeMenu(clientX, clientY, id);
+      }
+    }, !canAdd, false);
+    addButton("Change type", function () {
+      showChangeKindMenu(clientX, clientY, id);
+    }, !canChangeType, false);
+    addButton("Insert node", function () {
+      showInsertMenu(clientX, clientY, id, canInsertLeft, canInsertRight);
+    }, !canInsertLeft && !canInsertRight, false);
+    addButton("Edit node", function () {
+      setComponentValue({ type: "select", id: id, nonce: Date.now() });
+    }, false, false);
+    addButton("Copy node", function () {
+      setComponentValue({ type: "copy_node", id: id, nonce: Date.now() });
+    }, false, false);
+    addButton("Cut node", function () {
+      setComponentValue({ type: "cut_node", id: id, nonce: Date.now() });
+    }, isRoot, false);
+    addButton("Paste node", function () {
+      setComponentValue({ type: "paste_node", parent_id: id, nonce: Date.now() });
+    }, !canAdd, false);
+    addButton("Delete node", function () {
+      setComponentValue({ type: "delete_node", id: id, nonce: Date.now() });
+    }, isRoot, true);
+    document.body.appendChild(menuEl);
+    clampMenuToViewport();
+  }
+
+  window.addEventListener("mousemove", function (evt) {
+    if (!drag) return;
+    var svg = root.querySelector("svg");
+    if (!svg) return;
+    var ctm = svg.getScreenCTM();
+    var x = (evt.clientX - ctm.e) / ctm.a - drag.dx;
+    var y = (evt.clientY - ctm.f) / ctm.d - drag.dy;
+    var n = nodeById(drag.id);
+    if (!n) return;
+    var shape = SHAPE[n.kind] || SHAPE.chance;
+    n.x = x - shape.w / 2 - state.offsetX;
+    n.y = y - shape.h / 2 - state.offsetY;
+    drag.moved = true;
+    render(true);
+  });
+
+  window.addEventListener("mouseup", function () {
+    if (!drag) return;
+    var id = drag.id;
+    var moved = drag.moved;
+    var n = nodeById(id);
+    drag = null;
+    if (!n) return;
+    if (moved) {
+      setComponentValue({ type: "move", id: id, x: n.x, y: n.y, nonce: Date.now() });
+    } else {
+      setComponentValue({ type: "select", id: id, nonce: Date.now() });
+    }
+  });
+
+  window.addEventListener("message", function (event) {
+    var msg = event.data;
+    if (!msg || msg.type !== "streamlit:render") return;
+    var args = msg.args || {};
+    state.nodes = (args.nodes || []).map(function (n) { return Object.assign({}, n); });
+    var firstNodeWithStyles = state.nodes.length ? state.nodes[0] : null;
+    state.hasTextStyles = !!(firstNodeWithStyles && firstNodeWithStyles.text_styles);
+    if (state.hasTextStyles) state.styles = firstNodeWithStyles.text_styles;
+    state.edges = args.edges || [];
+    state.zoom = args.zoom || 1;
+    state.viewportHeight = args.viewport_height || 720;
+    state.selectedId = args.selected_id || null;
+    state.rootId = null;
+    for (var i = 0; i < state.nodes.length; i++) {
+      if (state.nodes[i].is_root) { state.rootId = state.nodes[i].id; break; }
+    }
+    var incomingResetNonce = args.reset_scroll_nonce;
+    var shouldResetScroll =
+      incomingResetNonce !== undefined && incomingResetNonce !== state.resetScrollNonce;
+    state.resetScrollNonce = incomingResetNonce;
+    state.hasRealData = true;
+    clearTimeout(frameHeightFallbackTimer);
+    render();
+    var incomingExportNonce = args.export_nonce || 0;
+    if (incomingExportNonce && incomingExportNonce !== state.lastExportNonce) {
+      state.lastExportNonce = incomingExportNonce;
+      exportDiagramAsPng();
+    }
+    // A full auto-arrange can move every node to a much more compact
+    // area than wherever the canvas was previously scrolled to -- reset
+    // back to the origin so the freshly recomputed layout is actually
+    // visible instead of showing empty space at the old scroll offset.
+    if (shouldResetScroll) {
+      root.scrollLeft = 0;
+      root.scrollTop = 0;
+    }
+  });
+
+  window.addEventListener("keydown", function (evt) {
+    var mod = evt.ctrlKey || evt.metaKey;
+    if (!mod || evt.shiftKey || evt.altKey) return;
+    var key = (evt.key || "").toLowerCase();
+    if (key === "z") {
+      evt.preventDefault();
+      setComponentValue({ type: "undo", nonce: Date.now() });
+    } else if (key === "c") {
+      if (!state.selectedId) return;
+      evt.preventDefault();
+      setComponentValue({ type: "copy_node", id: state.selectedId, nonce: Date.now() });
+    } else if (key === "x") {
+      if (!state.selectedId) return;
+      evt.preventDefault();
+      setComponentValue({ type: "cut_node", id: state.selectedId, nonce: Date.now() });
+    } else if (key === "v") {
+      var target = nodeById(state.selectedId);
+      if (!target || !(target.add_choices || []).length) return;
+      evt.preventDefault();
+      setComponentValue({ type: "paste_node", parent_id: state.selectedId, nonce: Date.now() });
+    }
+  });
+
+  streamlitReady();
+  // Render an empty canvas immediately so the iframe has a sane initial
+  // height before the first "streamlit:render" event arrives.
+  render();
+})();
+</script>
+</body>
+</html>

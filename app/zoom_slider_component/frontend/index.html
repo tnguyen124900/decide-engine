@@ -1,0 +1,78 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; height: 30px;
+    font-family: "Source Sans", "Source Sans Pro", -apple-system, "Segoe UI", sans-serif; user-select: none; }
+  #wrap { position: relative; width: 100%; height: 30px; cursor: pointer; touch-action: none; }
+  #line { position: absolute; left: 9px; right: 9px; top: 20px; height: 3px; border-radius: 2px; background: #ffffff; }
+  #dot { position: absolute; top: 21.5px; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%;
+    background: #ffffff; box-shadow: 0 1px 4px rgba(0,0,0,0.45); cursor: grab; }
+  #label { position: absolute; top: 1px; transform: translateX(-50%); font-size: 11px; line-height: 12px; color: #ffffff; white-space: nowrap; pointer-events: none; }
+</style></head>
+<body>
+<div id="wrap"><div id="line"></div><div id="dot"></div><div id="label"></div></div>
+<script>
+(function () {
+  "use strict";
+  function send(type, data) {
+    window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, data || {}), "*");
+  }
+  var wrap = document.getElementById("wrap");
+  var dot = document.getElementById("dot");
+  var label = document.getElementById("label");
+  var st = { pct: 100, vmin: 20, vmax: 300, step: 1, dragging: false };
+  var PAD = 9;
+
+  function clamp(v) { return Math.min(st.vmax, Math.max(st.vmin, v)); }
+  function snap(v) { return clamp(Math.round(v / st.step) * st.step); }
+  function place(pct) {
+    var w = wrap.clientWidth - 2 * PAD;
+    var frac = (pct - st.vmin) / Math.max(1, st.vmax - st.vmin);
+    var x = PAD + Math.min(1, Math.max(0, frac)) * w;
+    dot.style.left = x + "px";
+    label.style.left = x + "px";
+    label.textContent = Math.round(pct) + "%";
+  }
+  function pctFromEvent(evt) {
+    var rect = wrap.getBoundingClientRect();
+    var frac = (evt.clientX - rect.left - PAD) / Math.max(1, rect.width - 2 * PAD);
+    return snap(st.vmin + Math.min(1, Math.max(0, frac)) * (st.vmax - st.vmin));
+  }
+  function commit(pct) {
+    send("streamlit:setComponentValue", { value: { pct: pct, nonce: Date.now() }, dataType: "json" });
+  }
+
+  wrap.addEventListener("pointerdown", function (evt) {
+    st.dragging = true;
+    wrap.setPointerCapture(evt.pointerId);
+    st.cur = pctFromEvent(evt);
+    place(st.cur);
+    evt.preventDefault();
+  });
+  wrap.addEventListener("pointermove", function (evt) {
+    if (!st.dragging) return;
+    st.cur = pctFromEvent(evt);
+    place(st.cur);
+  });
+  function end() {
+    if (!st.dragging) return;
+    st.dragging = false;
+    if (st.cur !== st.pct) commit(st.cur);
+  }
+  wrap.addEventListener("pointerup", end);
+  wrap.addEventListener("pointercancel", end);
+
+  window.addEventListener("resize", function () { place(st.dragging ? st.cur : st.pct); });
+  window.addEventListener("message", function (event) {
+    var msg = event.data;
+    if (!msg || msg.type !== "streamlit:render") return;
+    var a = msg.args || {};
+    st.vmin = a.vmin; st.vmax = a.vmax; st.step = a.step || 1; st.pct = a.pct;
+    if (!st.dragging) place(st.pct);
+    send("streamlit:setFrameHeight", { height: 30 });
+  });
+  send("streamlit:componentReady", { apiVersion: 1 });
+  send("streamlit:setFrameHeight", { height: 30 });
+})();
+</script>
+</body></html>
