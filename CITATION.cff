@@ -3,6 +3,7 @@ message: "If you use this software, please cite it as below."
 title: "DECIDE Engine: an open calculation engine for health economic models"
 type: software
 version: 0.1.0
+date-released: 2026-10-16
 license: MIT
 authors:
   - family-names: Nguyen

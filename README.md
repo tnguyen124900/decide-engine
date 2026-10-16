@@ -16,7 +16,14 @@ An open calculation engine for health economic (HEOR) models, written in Python.
 
 ## Download the app
 
-Prebuilt DECIDE apps for macOS (Apple silicon) and Windows are attached to the [Releases](../../releases) of this repository. The app is not code-signed; see `app/packaging/README.md` for first-launch steps. To run it from source, see `app/README.md`.
+Prebuilt DECIDE apps for macOS (Apple silicon) and Windows are attached to the [Releases](../../releases) of this repository.
+
+The apps are not code-signed, so the first launch needs one extra step:
+
+- **macOS:** open the `.dmg` and drag DECIDE to Applications. Open DECIDE once; macOS will say it cannot be opened. Then go to **System Settings → Privacy & Security**, scroll down to the message about DECIDE and click **Open Anyway**, then confirm with your password or Touch ID. (On older macOS versions, right-click DECIDE and choose **Open** instead.) You only need to do this once.
+- **Windows:** unzip the file and run `DECIDE.exe`. If SmartScreen appears, choose **More info**, then **Run anyway**. The Microsoft WebView2 runtime is required (included in Windows 11).
+
+Models and autosaves are stored in `~/DECIDE/app/models` and `~/DECIDE/app/autosave`. To run the app from source, see `app/README.md`.
 
 ## Documentation
 

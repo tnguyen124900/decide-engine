@@ -11,7 +11,7 @@ Local (on the target OS), from the `app/` folder: `pip install -r packaging/requ
 `pip install pywebview` then `python packaging/launcher.py`
 
 ## First launch (the app is not code-signed)
-- macOS: drag DECIDE to Applications, right-click -> Open -> Open.
+- macOS: drag DECIDE to Applications and open it once (macOS will refuse). Then System Settings -> Privacy & Security -> scroll down to the DECIDE message -> **Open Anyway** -> confirm. On older macOS versions, right-click -> Open -> Open works instead.
 - Windows: unzip, run DECIDE.exe; if SmartScreen appears: More info -> Run anyway. Needs the Microsoft WebView2 runtime (included in Windows 11).
 
 ## Data
